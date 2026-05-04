@@ -103,6 +103,7 @@ public class AuthService {
     public StudentRegistrationResult registerStudent(String firstName,
                                                      String middleName,
                                                      String lastName,
+                                                     String suffix,
                                                      String program,
                                                      String yearLevel,
                                                      String email,
@@ -118,7 +119,8 @@ public class AuthService {
         String normalizedFirstName = normalizeAndValidateName(firstName, "First name", false);
         String normalizedMiddleName = normalizeAndValidateName(middleName, "Middle name", true);
         String normalizedLastName = normalizeAndValidateName(lastName, "Last name", false);
-        String normalizedFullName = buildFullName(normalizedFirstName, normalizedMiddleName, normalizedLastName);
+        String normalizedSuffix = normalizeAndValidateSuffix(suffix);
+        String normalizedFullName = buildFullName(normalizedFirstName, normalizedMiddleName, normalizedLastName, normalizedSuffix);
         String normalizedProgram = normalizeAndValidateProgram(program);
         String normalizedYearLevel = validateRequiredYearLevel(yearLevel);
         String normalizedEmail = normalizeAndValidateEmail(email);
@@ -332,8 +334,28 @@ public class AuthService {
         return normalized;
     }
 
-    private String buildFullName(String firstName, String middleName, String lastName) {
-        String fullName = String.join(" ", firstName, middleName, lastName)
+    private String normalizeAndValidateSuffix(String value) {
+        String normalized = normalizeName(value);
+        if (normalized.isBlank()) {
+            return "";
+        }
+        if (!NAME_ALLOWED_PATTERN.matcher(normalized).matches()) {
+            throw new IllegalArgumentException("Use letters only. Spaces, apostrophe, hyphen, and period are allowed.");
+        }
+        if (countLetters(normalized) < 2) {
+            throw new IllegalArgumentException("Suffix must be at least 2 letters.");
+        }
+        if (TRIPLE_REPEATED_LETTER_PATTERN.matcher(normalized).find()) {
+            throw new IllegalArgumentException("Avoid triple repeated letters in names.");
+        }
+        if (hasTooLongNameToken(normalized)) {
+            throw new IllegalArgumentException("Please avoid random long letter sequences in names.");
+        }
+        return normalized;
+    }
+
+    private String buildFullName(String firstName, String middleName, String lastName, String suffix) {
+        String fullName = String.join(" ", firstName, middleName, lastName, suffix)
                 .trim()
                 .replaceAll("\\s+", " ");
         if (fullName.length() > 100) {

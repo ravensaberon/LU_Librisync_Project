@@ -90,7 +90,6 @@
             <c:set var="activeIssueDueDate" value="${studentActiveIssueDueDateByBookId[book.id]}"/>
             <c:set var="returnRequested" value="${studentActiveIssueReturnRequestedByBookId[book.id]}"/>
             <c:set var="walkInBorrowableCopies" value="${walkInBorrowableCopyCountByBook[book.id]}"/>
-            <c:set var="reservationPickupDate" value="${not empty nextAvailableDateByBookId[book.id] ? nextAvailableDateByBookId[book.id] : todayDate}"/>
             <button class="catalog-card catalog-card-button" type="button" data-bs-toggle="modal" data-bs-target="#catalogBookModal${book.id}">
                 <span class="catalog-cover">
                     <c:choose>
@@ -263,23 +262,13 @@
                                                 <c:if test="${walkInBorrowableCopies > 0}">
                                                     <form method="post" action="${pageContext.request.contextPath}/student/catalog/${book.id}/borrow">
                                                         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                                                        <button class="btn btn-brand" type="submit">Request desk pickup</button>
+                                                        <button class="btn btn-brand" type="submit">Borrow now</button>
                                                     </form>
                                                 </c:if>
-                                                <form method="post" action="${pageContext.request.contextPath}/student/reservations" class="reservation-pickup-form">
+                                                <form method="post" action="${pageContext.request.contextPath}/student/reservations">
                                                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                                                     <input type="hidden" name="bookId" value="${book.id}">
-                                                    <label class="form-label mb-0" for="preferredPickupDate${book.id}">Pickup date</label>
-                                                    <input
-                                                            class="form-control"
-                                                            id="preferredPickupDate${book.id}"
-                                                            name="preferredPickupDate"
-                                                            type="date"
-                                                            value="${reservationPickupDate}"
-                                                            min="${todayDate}"
-                                                            max="${reservationScheduleMaxDate}"
-                                                            required>
-                                                    <button class="btn btn-warm" type="submit">Join reservation queue</button>
+                                                    <button class="btn btn-warm" type="submit">Place a reservation</button>
                                                 </form>
                                             </c:otherwise>
                                         </c:choose>

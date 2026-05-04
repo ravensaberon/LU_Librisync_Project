@@ -83,7 +83,9 @@ public class AdminController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(Authentication authentication, Model model) {
+    public String dashboard(Authentication authentication,
+                            @RequestParam(defaultValue = "1") Integer auditPage,
+                            Model model) {
         issueService.refreshOverdueStatuses();
         long issuedCount = issueRecordRepository.countByStatus(IssueStatus.ISSUED);
         long overdueCount = issueRecordRepository.countByStatus(IssueStatus.OVERDUE);
@@ -106,13 +108,14 @@ public class AdminController {
         model.addAttribute("overdueRate", (issuedCount + overdueCount) == 0 ? 0 : (overdueCount * 100) / (issuedCount + overdueCount));
         model.addAttribute("recentIssues", issueService.getRecentIssues());
         model.addAttribute("mostBorrowedBooks", issueService.getMostBorrowedBooks());
-        model.addAttribute("weeklyChart", issueService.getWeeklyCirculationChart());
+        model.addAttribute("circulationChartSeries", issueService.getCirculationChartSeries());
+        var recentAuditLogsPage = PaginationUtils.paginate(auditLogService.getRecentLogs(), auditPage, 4);
+        model.addAttribute("recentAuditLogsPage", recentAuditLogsPage);
         model.addAttribute("pendingReservationCount", reservationService.countPendingReservations());
         model.addAttribute("readyReservationCount", reservationService.countReadyReservations());
         model.addAttribute("outstandingFineCount", fineService.countOutstandingFines());
         model.addAttribute("outstandingFineTotal", fineService.getOutstandingFineTotal());
         model.addAttribute("blockedBorrowerCount", blockedBorrowerCount);
-        model.addAttribute("recentAuditLogs", auditLogService.getRecentLogs().stream().limit(8).toList());
         model.addAttribute("recentOutstandingFines", fineService.getRecentOutstandingFines());
         return "admin/dashboard";
     }
@@ -168,9 +171,13 @@ public class AdminController {
     @GetMapping("/students")
     public String students(@RequestParam(required = false) String studentId,
                            @RequestParam(required = false) String modalStudentId,
+                           @RequestParam(defaultValue = "active") String view,
                            @RequestParam(defaultValue = "1") Integer page,
                            Model model) {
-        List<Student> students = studentService.searchStudents(studentId);
+        boolean archivedView = "archived".equalsIgnoreCase(view);
+        List<Student> students = studentService.searchStudents(studentId, archivedView);
+        List<Student> activeStudents = studentService.searchStudents(null, false);
+        List<Student> archivedStudents = studentService.searchStudents(null, true);
         var studentsPage = PaginationUtils.paginate(students, page, STUDENT_DIRECTORY_PAGE_SIZE);
         Map<String, BorrowerStanding> borrowerStandingByStudentId = students.stream()
                 .collect(java.util.stream.Collectors.toMap(
@@ -192,10 +199,12 @@ public class AdminController {
         model.addAttribute("students", studentsPage.getItems());
         model.addAttribute("studentsPage", studentsPage);
         model.addAttribute("studentIdFilter", studentId);
+        model.addAttribute("studentView", archivedView ? "archived" : "active");
         model.addAttribute("userStatuses", studentService.getAvailableStatuses());
         model.addAttribute("modalStudentId", modalStudentId);
         model.addAttribute("borrowerStandingByStudentId", borrowerStandingByStudentId);
-        model.addAttribute("studentDirectoryTotalCount", userRepository.countByRole(Role.STUDENT));
+        model.addAttribute("studentDirectoryTotalCount", activeStudents.size());
+        model.addAttribute("studentDirectoryArchivedCount", archivedStudents.size());
         model.addAttribute("studentDirectoryFilteredCount", students.size());
         model.addAttribute("studentDirectoryActiveCount", activeAccountCount);
         model.addAttribute("studentDirectoryBlockedCount", blockedStudentCount);
@@ -238,14 +247,20 @@ public class AdminController {
     }
 
     @GetMapping("/students/{studentId}")
-    public String studentDetails(@PathVariable String studentId, Model model) {
+    public String studentDetails(@PathVariable String studentId,
+                                 @RequestParam(defaultValue = "active") String view,
+                                 Model model) {
         populateStudentDetailModel(studentId, model);
+        model.addAttribute("studentView", normalizeStudentView(view));
         return "admin/student-detail";
     }
 
     @GetMapping("/students/{studentId}/modal")
-    public String studentDetailsModal(@PathVariable String studentId, Model model) {
+    public String studentDetailsModal(@PathVariable String studentId,
+                                      @RequestParam(defaultValue = "active") String view,
+                                      Model model) {
         populateStudentDetailModel(studentId, model);
+        model.addAttribute("studentView", normalizeStudentView(view));
         return "admin/student-detail-modal";
     }
 
@@ -333,6 +348,10 @@ public class AdminController {
         model.addAttribute(prefix + "ZipcodeValue", addressFormValue.getZipcode());
     }
 
+    private String normalizeStudentView(String view) {
+        return "archived".equalsIgnoreCase(view) ? "archived" : "active";
+    }
+
     @PostMapping("/students/{studentId}/password")
     public String resetStudentPassword(@PathVariable String studentId,
                                        @RequestParam String newPassword,
@@ -356,25 +375,70 @@ public class AdminController {
         return "redirect:/admin/students?modalStudentId=" + studentId;
     }
 
+    @PostMapping("/students/{studentId}/archive")
+    public String archiveStudent(@PathVariable String studentId,
+                                 Authentication authentication,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            studentService.archiveStudent(studentId);
+            auditLogService.log(
+                    authentication.getName(),
+                    "STUDENT_ARCHIVED",
+                    "STUDENT",
+                    studentId,
+                    "Student account archived",
+                    "Student account " + studentId + " was archived by admin."
+            );
+            redirectAttributes.addFlashAttribute("success", "Student account archived successfully.");
+            return "redirect:/admin/students";
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+            return "redirect:/admin/students?modalStudentId=" + studentId;
+        }
+    }
+
+    @PostMapping("/students/{studentId}/restore")
+    public String restoreStudent(@PathVariable String studentId,
+                                 Authentication authentication,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            studentService.restoreArchivedStudent(studentId);
+            auditLogService.log(
+                    authentication.getName(),
+                    "STUDENT_RESTORED",
+                    "STUDENT",
+                    studentId,
+                    "Archived student account restored",
+                    "Student account " + studentId + " was restored by admin."
+            );
+            redirectAttributes.addFlashAttribute("success", "Archived student account restored successfully.");
+            return "redirect:/admin/students";
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+            return "redirect:/admin/students?view=archived&modalStudentId=" + studentId;
+        }
+    }
+
     @PostMapping("/students/{studentId}/delete")
     public String deleteStudent(@PathVariable String studentId,
+                                @RequestParam(defaultValue = "active") String view,
                                 Authentication authentication,
                                 RedirectAttributes redirectAttributes) {
         try {
-            studentService.deleteStudent(studentId);
+            studentService.permanentlyDeleteArchivedStudent(studentId);
             auditLogService.log(
                     authentication.getName(),
                     "STUDENT_DELETED",
                     "STUDENT",
                     studentId,
-                    "Student account deleted",
-                    "Student account " + studentId + " was removed by admin."
+                    "Student account permanently deleted",
+                    "Archived student account " + studentId + " was permanently removed by admin."
             );
             redirectAttributes.addFlashAttribute("success", "Student account deleted successfully.");
-            return "redirect:/admin/students";
+            return "redirect:/admin/students?view=" + normalizeStudentView(view);
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
-            return "redirect:/admin/students?modalStudentId=" + studentId;
+            return "redirect:/admin/students?view=" + normalizeStudentView(view) + "&modalStudentId=" + studentId;
         }
     }
 

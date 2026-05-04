@@ -30,7 +30,8 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
                 .disabled(user.getStatus() != null
                         && (user.getStatus().name().equals("INACTIVE")
-                            || user.getStatus().name().equals("PENDING")))
+                            || user.getStatus().name().equals("PENDING")
+                            || user.getStatus().name().equals("ARCHIVED")))
                 .build();
     }
 }

@@ -55,8 +55,13 @@
                         <strong class="hero-side-value">${studentDirectoryFilteredCount}</strong>
                         <span class="hero-side-caption">Student ID filter: ${studentIdFilter}</span>
                     </c:when>
+                    <c:when test="${studentView == 'archived'}">
+                        <div class="hero-side-title">Archived students</div>
+                        <strong class="hero-side-value">${studentDirectoryArchivedCount}</strong>
+                        <span class="hero-side-caption">Restore accounts here or remove them permanently.</span>
+                    </c:when>
                     <c:otherwise>
-                        <div class="hero-side-title">Registered students</div>
+                        <div class="hero-side-title">Active students</div>
                         <strong class="hero-side-value">${studentDirectoryTotalCount}</strong>
                         <span class="hero-side-caption">${studentDirectoryBlockedCount} blocked borrowers need follow-up.</span>
                     </c:otherwise>
@@ -68,7 +73,7 @@
     <section class="stat-grid mb-4">
         <div class="metric-card">
             <div class="metric-value">${studentDirectoryTotalCount}</div>
-            <div class="metric-label">Total student accounts</div>
+            <div class="metric-label">Active student accounts</div>
         </div>
         <div class="metric-card">
             <div class="metric-value">${studentDirectoryFilteredCount}</div>
@@ -80,7 +85,7 @@
         </div>
         <div class="metric-card">
             <div class="metric-value">${studentDirectoryActiveCount}</div>
-            <div class="metric-label">Active accounts</div>
+            <div class="metric-label">ACTIVE in this view</div>
         </div>
     </section>
 
@@ -90,6 +95,8 @@
                 <div class="section-title mb-2">Student directory</div>
                 <div class="directory-toolbar-meta">
                     <span class="directory-meta-pill">${studentDirectoryFilteredCount} results</span>
+                    <span class="directory-meta-pill subtle">Active: ${studentDirectoryTotalCount}</span>
+                    <span class="directory-meta-pill subtle">Archived: ${studentDirectoryArchivedCount}</span>
                     <c:if test="${not empty studentIdFilter}">
                         <span class="directory-meta-pill subtle">ID: ${studentIdFilter}</span>
                     </c:if>
@@ -97,8 +104,19 @@
                 </div>
             </div>
             <div class="directory-toolbar-actions">
+                <div class="d-flex flex-wrap gap-2">
+                    <a class="btn <c:choose><c:when test='${studentView == "active"}'>btn-brand</c:when><c:otherwise>btn-warm</c:otherwise></c:choose>"
+                       href="${pageContext.request.contextPath}/admin/students?view=active&studentId=${studentIdFilter}">
+                        Active students
+                    </a>
+                    <a class="btn <c:choose><c:when test='${studentView == "archived"}'>btn-brand</c:when><c:otherwise>btn-warm</c:otherwise></c:choose>"
+                       href="${pageContext.request.contextPath}/admin/students?view=archived&studentId=${studentIdFilter}">
+                        Archived students
+                    </a>
+                </div>
                 <form method="get" action="${pageContext.request.contextPath}/admin/students" class="directory-search-form">
                     <label class="visually-hidden" for="studentId">Search by student ID</label>
+                    <input type="hidden" name="view" value="${studentView}">
                     <div class="directory-search-input">
                         <i class="bi bi-search" aria-hidden="true"></i>
                         <input class="form-control"
@@ -109,7 +127,7 @@
                     </div>
                     <button class="btn btn-brand" type="submit">Search</button>
                     <c:if test="${not empty studentIdFilter}">
-                        <a class="btn btn-warm" href="${pageContext.request.contextPath}/admin/students">Clear</a>
+                        <a class="btn btn-warm" href="${pageContext.request.contextPath}/admin/students?view=${studentView}">Clear</a>
                     </c:if>
                 </form>
             </div>
@@ -182,15 +200,15 @@
             <nav class="mt-4" aria-label="Student directory pages">
                 <ul class="pagination justify-content-center mb-0">
                     <li class="page-item <c:if test='${!studentsPage.hasPrevious}'>disabled</c:if>">
-                        <a class="page-link" href="${pageContext.request.contextPath}/admin/students?page=${studentsPage.previousPage}&studentId=${studentIdFilter}">Previous</a>
+                        <a class="page-link" href="${pageContext.request.contextPath}/admin/students?page=${studentsPage.previousPage}&studentId=${studentIdFilter}&view=${studentView}">Previous</a>
                     </li>
                     <c:forEach begin="${studentsPage.startPage}" end="${studentsPage.endPage}" var="pageNumber">
                         <li class="page-item <c:if test='${pageNumber == studentsPage.page}'>active</c:if>">
-                            <a class="page-link" href="${pageContext.request.contextPath}/admin/students?page=${pageNumber}&studentId=${studentIdFilter}">${pageNumber}</a>
+                            <a class="page-link" href="${pageContext.request.contextPath}/admin/students?page=${pageNumber}&studentId=${studentIdFilter}&view=${studentView}">${pageNumber}</a>
                         </li>
                     </c:forEach>
                     <li class="page-item <c:if test='${!studentsPage.hasNext}'>disabled</c:if>">
-                        <a class="page-link" href="${pageContext.request.contextPath}/admin/students?page=${studentsPage.nextPage}&studentId=${studentIdFilter}">Next</a>
+                        <a class="page-link" href="${pageContext.request.contextPath}/admin/students?page=${studentsPage.nextPage}&studentId=${studentIdFilter}&view=${studentView}">Next</a>
                     </li>
                 </ul>
             </nav>
@@ -219,6 +237,7 @@
         var studentButtons = document.querySelectorAll("[data-student-id]");
         var bootstrapModal = modalElement ? new bootstrap.Modal(modalElement) : null;
         var autoOpenStudentId = "${modalStudentId}";
+        var currentStudentView = "${studentView}";
         var cityZipCodes = {
             <c:forEach items="${registrationCityZipCodes}" var="entry" varStatus="status">
             "${entry.key}": "${entry.value}"<c:if test="${!status.last}">,</c:if>
@@ -276,7 +295,7 @@
             showLoadingState();
             bootstrapModal.show();
 
-            fetch("${pageContext.request.contextPath}/admin/students/" + encodeURIComponent(studentId) + "/modal", {
+            fetch("${pageContext.request.contextPath}/admin/students/" + encodeURIComponent(studentId) + "/modal?view=" + encodeURIComponent(currentStudentView), {
                 headers: {
                     "X-Requested-With": "XMLHttpRequest"
                 }

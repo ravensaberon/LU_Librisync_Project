@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css?v=20260504-global-side-nav-flush3">
 </head>
 <body>
+<c:set var="activeReportTab" value="${empty reportTab ? 'exports' : reportTab}" />
 <div class="page-shell">
     <div class="app-nav">
         <div>
@@ -87,7 +88,7 @@
         </form>
     </section>
 
-    <section class="stat-grid mb-4">
+    <section class="stat-grid reports-stat-grid mb-4">
         <div class="metric-card">
             <div class="metric-value">${circulationCount}</div>
             <div class="metric-label">Circulation records</div>
@@ -114,237 +115,391 @@
         </div>
     </section>
 
-    <section class="panel-card mb-4">
-        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+    <section class="dashboard-tab-shell mb-4" data-report-tabs data-report-initial-tab="${activeReportTab}">
+        <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
-                <div class="section-title mb-2">Export report files</div>
-                <p class="helper-copy">Generate styled Excel exports for record review, submission, printing, or further spreadsheet analysis.</p>
+                <div class="section-title mb-2">Report views</div>
+                <p class="helper-copy mb-0">Switch between focused report groups instead of scrolling through one long page.</p>
             </div>
         </div>
-        <div class="module-grid export-grid">
-            <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=circulation&dateFrom=${dateFrom}&dateTo=${dateTo}">
-                <h3><i class="bi bi-arrow-left-right me-2"></i>Circulation Report</h3>
-                <p>Issued, returned, and overdue transactions with issue codes, dates, and fines.</p>
-                <span class="action-link">Download Excel</span>
-            </a>
-            <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=overdue&dateFrom=${dateFrom}&dateTo=${dateTo}">
-                <h3><i class="bi bi-exclamation-triangle me-2"></i>Overdue Report</h3>
-                <p>Current overdue borrowers, days late, fine amounts, and issuing staff context.</p>
-                <span class="action-link">Download Excel</span>
-            </a>
-            <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=fines&dateFrom=${dateFrom}&dateTo=${dateTo}">
-                <h3><i class="bi bi-receipt me-2"></i>Fine Report</h3>
-                <p>Unpaid, paid, and waived penalty records tied to each issue transaction.</p>
-                <span class="action-link">Download Excel</span>
-            </a>
-            <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=reservations&dateFrom=${dateFrom}&dateTo=${dateTo}">
-                <h3><i class="bi bi-hourglass-split me-2"></i>Reservation Report</h3>
-                <p>Queue position, ready-claim windows, and reservation outcomes for each title.</p>
-                <span class="action-link">Download Excel</span>
-            </a>
-            <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=audit&dateFrom=${dateFrom}&dateTo=${dateTo}">
-                <h3><i class="bi bi-shield-check me-2"></i>Audit Report</h3>
-                <p>Admin and system actions recorded for books, students, fines, reservations, and security events.</p>
-                <span class="action-link">Download Excel</span>
-            </a>
+
+        <div class="dashboard-tab-nav" role="tablist" aria-label="Report center views">
+            <button class="dashboard-tab-button" type="button" role="tab" id="reports-exports-tab" aria-selected="true" aria-controls="reports-exports-panel" data-report-tab-button data-report-tab-target="reports-exports-panel">
+                <i class="bi bi-download"></i>
+                <span>Exports</span>
+            </button>
+            <button class="dashboard-tab-button" type="button" role="tab" id="reports-insights-tab" aria-selected="false" aria-controls="reports-insights-panel" data-report-tab-button data-report-tab-target="reports-insights-panel">
+                <i class="bi bi-bar-chart-line"></i>
+                <span>Insights</span>
+            </button>
+            <button class="dashboard-tab-button" type="button" role="tab" id="reports-borrowing-tab" aria-selected="false" aria-controls="reports-borrowing-panel" data-report-tab-button data-report-tab-target="reports-borrowing-panel">
+                <i class="bi bi-journal-richtext"></i>
+                <span>Borrowing</span>
+            </button>
+            <button class="dashboard-tab-button" type="button" role="tab" id="reports-audit-tab" aria-selected="false" aria-controls="reports-audit-panel" data-report-tab-button data-report-tab-target="reports-audit-panel">
+                <i class="bi bi-shield-check"></i>
+                <span>Audit & fines</span>
+            </button>
         </div>
     </section>
 
-    <section class="panel-grid mb-4">
-        <div class="panel-card">
-            <div class="section-title">Collection and borrower insights</div>
-            <div class="insight-split-grid">
-                <div class="insight-panel">
-                    <div class="insight-panel-title">Top borrowed titles</div>
-                    <ul class="list-clean">
-                        <c:forEach items="${topTitles}" var="entry">
-                            <li class="d-flex justify-content-between align-items-center">
-                                <span>${entry.key}</span>
-                                <span class="tag-chip">${entry.value} borrow(s)</span>
-                            </li>
-                        </c:forEach>
-                        <c:if test="${empty topTitles}">
-                            <li class="muted-text">No title data is available for the current date range.</li>
-                        </c:if>
-                    </ul>
+    <section class="dashboard-tab-panels" data-report-panel-shell>
+        <div class="dashboard-tab-panel" id="reports-exports-panel" role="tabpanel" aria-labelledby="reports-exports-tab" data-report-tab-panel>
+            <section class="panel-card">
+                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                    <div>
+                        <div class="section-title mb-2">Export report files</div>
+                        <p class="helper-copy">Generate styled Excel exports for record review, submission, printing, or further spreadsheet analysis.</p>
+                    </div>
                 </div>
-                <div class="insight-panel">
-                    <div class="insight-panel-title">Most active borrowers</div>
-                    <ul class="list-clean">
-                        <c:forEach items="${topBorrowers}" var="entry">
-                            <li class="d-flex justify-content-between align-items-center">
-                                <span>${entry.key}</span>
-                                <span class="tag-chip">${entry.value} loan(s)</span>
-                            </li>
-                        </c:forEach>
-                        <c:if test="${empty topBorrowers}">
-                            <li class="muted-text">Borrower activity will appear once circulation data exists.</li>
-                        </c:if>
-                    </ul>
+                <div class="module-grid export-grid">
+                    <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=circulation&dateFrom=${dateFrom}&dateTo=${dateTo}">
+                        <h3><i class="bi bi-arrow-left-right me-2"></i>Circulation Report</h3>
+                        <p>Issued, returned, and overdue transactions with issue codes, dates, and fines.</p>
+                        <span class="action-link">Download Excel</span>
+                    </a>
+                    <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=overdue&dateFrom=${dateFrom}&dateTo=${dateTo}">
+                        <h3><i class="bi bi-exclamation-triangle me-2"></i>Overdue Report</h3>
+                        <p>Current overdue borrowers, days late, fine amounts, and issuing staff context.</p>
+                        <span class="action-link">Download Excel</span>
+                    </a>
+                    <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=fines&dateFrom=${dateFrom}&dateTo=${dateTo}">
+                        <h3><i class="bi bi-receipt me-2"></i>Fine Report</h3>
+                        <p>Unpaid, paid, and waived penalty records tied to each issue transaction.</p>
+                        <span class="action-link">Download Excel</span>
+                    </a>
+                    <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=reservations&dateFrom=${dateFrom}&dateTo=${dateTo}">
+                        <h3><i class="bi bi-hourglass-split me-2"></i>Reservation Report</h3>
+                        <p>Queue position, ready-claim windows, and reservation outcomes for each title.</p>
+                        <span class="action-link">Download Excel</span>
+                    </a>
+                    <a class="module-card export-card" href="${pageContext.request.contextPath}/admin/reports/export?type=audit&dateFrom=${dateFrom}&dateTo=${dateTo}">
+                        <h3><i class="bi bi-shield-check me-2"></i>Audit Report</h3>
+                        <p>Admin and system actions recorded for books, students, fines, reservations, and security events.</p>
+                        <span class="action-link">Download Excel</span>
+                    </a>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <div class="panel-card">
-            <div class="section-title">Fine summary</div>
-            <div class="chart-summary-grid">
-                <div class="chart-summary-card">
-                    <span class="chart-summary-label">Outstanding</span>
-                    <strong class="chart-summary-value">${unpaidFineTotal}</strong>
-                    <span class="chart-summary-note">Current unpaid balance within the selected reporting range.</span>
-                </div>
-                <div class="chart-summary-card">
-                    <span class="chart-summary-label">Collected</span>
-                    <strong class="chart-summary-value">${paidFineTotal}</strong>
-                    <span class="chart-summary-note">Fine amounts already marked as paid by admin staff.</span>
-                </div>
-                <div class="chart-summary-card">
-                    <span class="chart-summary-label">Waived</span>
-                    <strong class="chart-summary-value">${waivedFineTotal}</strong>
-                    <span class="chart-summary-note">Charges cleared through waiver decisions or admin discretion.</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="panel-grid panel-grid-equal mb-4">
-        <div class="panel-card">
-            <div class="section-title">Overdue snapshot</div>
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Book</th>
-                        <th>Due date</th>
-                        <th>Fine</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <c:forEach items="${overdueRecords}" var="issue">
-                        <tr>
-                            <td>${issue.student.studentId} - ${issue.student.user.name}</td>
-                            <td>${issue.book.title}</td>
-                            <td>${issue.dueDateDisplay}</td>
-                            <td>${issue.fineAmount}</td>
-                        </tr>
-                    </c:forEach>
-                    <c:if test="${empty overdueRecords}">
-                        <tr>
-                            <td colspan="4" class="text-center muted-text">No overdue records matched the current filters.</td>
-                        </tr>
-                    </c:if>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="panel-card">
-            <div class="section-title">Reservation snapshot</div>
-            <div class="info-grid mb-3">
-                <div class="info-tile">
-                    <span class="info-tile-label">Pending</span>
-                    <span class="info-tile-value">${pendingReservationCount}</span>
-                </div>
-                <div class="info-tile">
-                    <span class="info-tile-label">Ready</span>
-                    <span class="info-tile-value">${readyReservationCount}</span>
-                </div>
-                <div class="info-tile">
-                    <span class="info-tile-label">Claimed</span>
-                    <span class="info-tile-value">${claimedReservationCount}</span>
-                </div>
-                <div class="info-tile">
-                    <span class="info-tile-label">Cancelled</span>
-                    <span class="info-tile-value">${cancelledReservationCount}</span>
-                </div>
-            </div>
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead>
-                    <tr>
-                        <th>Book</th>
-                        <th>Borrower</th>
-                        <th>Status</th>
-                        <th>Queue</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <c:forEach items="${reservationRecords}" var="reservation">
-                        <tr>
-                            <td>${reservation.book.title}</td>
-                            <td>${reservation.student.studentId} - ${reservation.student.user.name}</td>
-                            <td><span class="tag-chip">${reservation.status}</span></td>
-                            <td>${reservation.queuePosition}</td>
-                        </tr>
-                    </c:forEach>
-                    <c:if test="${empty reservationRecords}">
-                        <tr>
-                            <td colspan="4" class="text-center muted-text">No reservation records matched the current filters.</td>
-                        </tr>
-                    </c:if>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </section>
-
-    <section class="panel-grid panel-grid-equal">
-        <div class="panel-card">
-            <div class="section-title">Recent fine activity</div>
-            <div class="table-responsive">
-                <table class="table align-middle">
-                    <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Calculated</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <c:forEach items="${fineRecords}" var="fine">
-                        <tr>
-                            <td>${fine.student.studentId} - ${fine.student.user.name}</td>
-                            <td>${fine.amount}</td>
-                            <td><span class="tag-chip">${fine.status}</span></td>
-                            <td>${fine.calculatedAtDisplay}</td>
-                        </tr>
-                    </c:forEach>
-                    <c:if test="${empty fineRecords}">
-                        <tr>
-                            <td colspan="4" class="text-center muted-text">No fine activity was found for the selected range.</td>
-                        </tr>
-                    </c:if>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="panel-card">
-            <div class="section-title">Recent audit events</div>
-            <div class="audit-timeline">
-                <c:forEach items="${auditRecords}" var="log">
-                    <div class="audit-item">
-                        <div class="audit-item-badge"><i class="bi bi-activity"></i></div>
-                        <div>
-                            <div class="audit-item-heading">${log.summary}</div>
-                            <div class="audit-item-meta">${log.action} | ${empty log.actorName ? 'System' : log.actorName} | ${log.createdAtDisplay}</div>
-                            <c:if test="${not empty log.details}">
-                                <div class="audit-item-copy">${log.details}</div>
-                            </c:if>
+        <div class="dashboard-tab-panel" id="reports-insights-panel" role="tabpanel" aria-labelledby="reports-insights-tab" data-report-tab-panel hidden>
+            <section class="panel-grid">
+                <div class="panel-card">
+                    <div class="section-title">Collection and borrower insights</div>
+                    <div class="insight-split-grid">
+                        <div class="insight-panel">
+                            <div class="insight-panel-title">Top borrowed titles</div>
+                            <ul class="list-clean">
+                                <c:forEach items="${topTitles}" var="entry">
+                                    <li class="d-flex justify-content-between align-items-center">
+                                        <span>${entry.key}</span>
+                                        <span class="tag-chip">${entry.value} borrow(s)</span>
+                                    </li>
+                                </c:forEach>
+                                <c:if test="${empty topTitles}">
+                                    <li class="muted-text">No title data is available for the current date range.</li>
+                                </c:if>
+                            </ul>
+                        </div>
+                        <div class="insight-panel">
+                            <div class="insight-panel-title">Most active borrowers</div>
+                            <ul class="list-clean">
+                                <c:forEach items="${topBorrowers}" var="entry">
+                                    <li class="d-flex justify-content-between align-items-center">
+                                        <span>${entry.key}</span>
+                                        <span class="tag-chip">${entry.value} loan(s)</span>
+                                    </li>
+                                </c:forEach>
+                                <c:if test="${empty topBorrowers}">
+                                    <li class="muted-text">Borrower activity will appear once circulation data exists.</li>
+                                </c:if>
+                            </ul>
                         </div>
                     </div>
-                </c:forEach>
-                <c:if test="${empty auditRecords}">
-                    <div class="muted-text">No audit events matched the selected report range.</div>
-                </c:if>
-            </div>
+                </div>
+
+                <div class="panel-card">
+                    <div class="section-title">Fine summary</div>
+                    <div class="chart-summary-grid">
+                        <div class="chart-summary-card">
+                            <span class="chart-summary-label">Outstanding</span>
+                            <strong class="chart-summary-value">${unpaidFineTotal}</strong>
+                            <span class="chart-summary-note">Current unpaid balance within the selected reporting range.</span>
+                        </div>
+                        <div class="chart-summary-card">
+                            <span class="chart-summary-label">Collected</span>
+                            <strong class="chart-summary-value">${paidFineTotal}</strong>
+                            <span class="chart-summary-note">Fine amounts already marked as paid by admin staff.</span>
+                        </div>
+                        <div class="chart-summary-card">
+                            <span class="chart-summary-label">Waived</span>
+                            <strong class="chart-summary-value">${waivedFineTotal}</strong>
+                            <span class="chart-summary-note">Charges cleared through waiver decisions or admin discretion.</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="dashboard-tab-panel" id="reports-borrowing-panel" role="tabpanel" aria-labelledby="reports-borrowing-tab" data-report-tab-panel hidden>
+            <section class="panel-grid panel-grid-equal">
+                <div class="panel-card">
+                    <div class="section-title">Overdue snapshot</div>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Book</th>
+                                <th>Due date</th>
+                                <th>Fine</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <c:forEach items="${overdueRecords}" var="issue">
+                                <tr>
+                                    <td>${issue.student.studentId} - ${issue.student.user.name}</td>
+                                    <td>${issue.book.title}</td>
+                                    <td>${issue.dueDateDisplay}</td>
+                                    <td>${issue.fineAmount}</td>
+                                </tr>
+                            </c:forEach>
+                            <c:if test="${empty overdueRecords}">
+                                <tr>
+                                    <td colspan="4" class="text-center muted-text">No overdue records matched the current filters.</td>
+                                </tr>
+                            </c:if>
+                            </tbody>
+                        </table>
+                    </div>
+                    <c:if test="${overdueRecordsPage.totalPages > 1}">
+                        <nav class="mt-3" aria-label="Overdue snapshot pages">
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item <c:if test='${!overdueRecordsPage.hasPrevious}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=borrowing&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.previousPage}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.page}">Previous</a>
+                                </li>
+                                <c:forEach begin="${overdueRecordsPage.startPage}" end="${overdueRecordsPage.endPage}" var="pageNumber">
+                                    <li class="page-item <c:if test='${pageNumber == overdueRecordsPage.page}'>active</c:if>">
+                                        <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=borrowing&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${pageNumber}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.page}">${pageNumber}</a>
+                                    </li>
+                                </c:forEach>
+                                <li class="page-item <c:if test='${!overdueRecordsPage.hasNext}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=borrowing&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.nextPage}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.page}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </c:if>
+                </div>
+
+                <div class="panel-card reservation-snapshot-card">
+                    <div class="section-title">Reservation snapshot</div>
+                    <div class="info-grid reservation-summary-grid mb-3">
+                        <div class="info-tile reservation-summary-tile">
+                            <span class="info-tile-label">Pending</span>
+                            <span class="info-tile-value">${pendingReservationCount}</span>
+                        </div>
+                        <div class="info-tile reservation-summary-tile">
+                            <span class="info-tile-label">Ready</span>
+                            <span class="info-tile-value">${readyReservationCount}</span>
+                        </div>
+                        <div class="info-tile reservation-summary-tile">
+                            <span class="info-tile-label">Claimed</span>
+                            <span class="info-tile-value">${claimedReservationCount}</span>
+                        </div>
+                        <div class="info-tile reservation-summary-tile">
+                            <span class="info-tile-label">Cancelled</span>
+                            <span class="info-tile-value">${cancelledReservationCount}</span>
+                        </div>
+                    </div>
+                    <div class="table-responsive reservation-table-wrap">
+                        <table class="table align-middle reservation-table">
+                            <colgroup>
+                                <col class="reservation-col-book">
+                                <col class="reservation-col-borrower">
+                                <col class="reservation-col-status">
+                                <col class="reservation-col-queue">
+                            </colgroup>
+                            <thead>
+                            <tr>
+                                <th>Book</th>
+                                <th>Borrower</th>
+                                <th>Status</th>
+                                <th>Queue</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <c:forEach items="${reservationRecords}" var="reservation">
+                                <tr>
+                                    <td class="reservation-book-cell">${reservation.book.title}</td>
+                                    <td class="reservation-borrower-cell">${reservation.student.studentId} - ${reservation.student.user.name}</td>
+                                    <td><span class="tag-chip reservation-status-chip">${reservation.status}</span></td>
+                                    <td class="reservation-queue-cell">${reservation.queuePosition}</td>
+                                </tr>
+                            </c:forEach>
+                            <c:if test="${empty reservationRecords}">
+                                <tr>
+                                    <td colspan="4" class="text-center muted-text">No reservation records matched the current filters.</td>
+                                </tr>
+                            </c:if>
+                            </tbody>
+                        </table>
+                    </div>
+                    <c:if test="${reservationRecordsPage.totalPages > 1}">
+                        <nav class="mt-3" aria-label="Reservation snapshot pages">
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item <c:if test='${!reservationRecordsPage.hasPrevious}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=borrowing&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.previousPage}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.page}">Previous</a>
+                                </li>
+                                <c:forEach begin="${reservationRecordsPage.startPage}" end="${reservationRecordsPage.endPage}" var="pageNumber">
+                                    <li class="page-item <c:if test='${pageNumber == reservationRecordsPage.page}'>active</c:if>">
+                                        <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=borrowing&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${pageNumber}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.page}">${pageNumber}</a>
+                                    </li>
+                                </c:forEach>
+                                <li class="page-item <c:if test='${!reservationRecordsPage.hasNext}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=borrowing&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.nextPage}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.page}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </c:if>
+                </div>
+            </section>
+        </div>
+
+        <div class="dashboard-tab-panel" id="reports-audit-panel" role="tabpanel" aria-labelledby="reports-audit-tab" data-report-tab-panel hidden>
+            <section class="panel-grid panel-grid-equal">
+                <div class="panel-card">
+                    <div class="section-title">Recent fine activity</div>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Calculated</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <c:forEach items="${fineRecords}" var="fine">
+                                <tr>
+                                    <td>${fine.student.studentId} - ${fine.student.user.name}</td>
+                                    <td>${fine.amount}</td>
+                                    <td><span class="tag-chip">${fine.status}</span></td>
+                                    <td>${fine.calculatedAtDisplay}</td>
+                                </tr>
+                            </c:forEach>
+                            <c:if test="${empty fineRecords}">
+                                <tr>
+                                    <td colspan="4" class="text-center muted-text">No fine activity was found for the selected range.</td>
+                                </tr>
+                            </c:if>
+                            </tbody>
+                        </table>
+                    </div>
+                    <c:if test="${fineRecordsPage.totalPages > 1}">
+                        <nav class="mt-3" aria-label="Recent fine activity pages">
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item <c:if test='${!fineRecordsPage.hasPrevious}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=audit&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.previousPage}&auditPage=${auditRecordsPage.page}">Previous</a>
+                                </li>
+                                <c:forEach begin="${fineRecordsPage.startPage}" end="${fineRecordsPage.endPage}" var="pageNumber">
+                                    <li class="page-item <c:if test='${pageNumber == fineRecordsPage.page}'>active</c:if>">
+                                        <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=audit&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.page}&finePage=${pageNumber}&auditPage=${auditRecordsPage.page}">${pageNumber}</a>
+                                    </li>
+                                </c:forEach>
+                                <li class="page-item <c:if test='${!fineRecordsPage.hasNext}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=audit&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.nextPage}&auditPage=${auditRecordsPage.page}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </c:if>
+                </div>
+
+                <div class="panel-card">
+                    <div class="section-title">Recent audit events</div>
+                    <div class="audit-timeline">
+                        <c:forEach items="${auditRecords}" var="log">
+                            <div class="audit-item">
+                                <div class="audit-item-badge"><i class="bi bi-activity"></i></div>
+                                <div>
+                                    <div class="audit-item-heading">${log.summary}</div>
+                                    <div class="audit-item-meta">${log.action} | ${empty log.actorName ? 'System' : log.actorName} | ${log.createdAtDisplay}</div>
+                                    <c:if test="${not empty log.details}">
+                                        <div class="audit-item-copy">${log.details}</div>
+                                    </c:if>
+                                </div>
+                            </div>
+                        </c:forEach>
+                        <c:if test="${empty auditRecords}">
+                            <div class="muted-text">No audit events matched the selected report range.</div>
+                        </c:if>
+                    </div>
+                    <c:if test="${auditRecordsPage.totalPages > 1}">
+                        <nav class="mt-3" aria-label="Recent audit event pages">
+                            <ul class="pagination justify-content-center mb-0">
+                                <li class="page-item <c:if test='${!auditRecordsPage.hasPrevious}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=audit&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.previousPage}">Previous</a>
+                                </li>
+                                <c:forEach begin="${auditRecordsPage.startPage}" end="${auditRecordsPage.endPage}" var="pageNumber">
+                                    <li class="page-item <c:if test='${pageNumber == auditRecordsPage.page}'>active</c:if>">
+                                        <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=audit&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.page}&auditPage=${pageNumber}">${pageNumber}</a>
+                                    </li>
+                                </c:forEach>
+                                <li class="page-item <c:if test='${!auditRecordsPage.hasNext}'>disabled</c:if>">
+                                    <a class="page-link" href="${pageContext.request.contextPath}/admin/reports?reportTab=audit&dateFrom=${dateFrom}&dateTo=${dateTo}&overduePage=${overdueRecordsPage.page}&reservationPage=${reservationRecordsPage.page}&finePage=${fineRecordsPage.page}&auditPage=${auditRecordsPage.nextPage}">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </c:if>
+                </div>
+            </section>
         </div>
     </section>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="${pageContext.request.contextPath}/js/app.js"></script>
+<script>
+    (function () {
+        var tabRoot = document.querySelector("[data-report-tabs]");
+        if (!tabRoot) {
+            return;
+        }
+
+        var buttons = document.querySelectorAll("[data-report-tab-button]");
+        var panels = document.querySelectorAll("[data-report-tab-panel]");
+
+        function activateTab(targetId) {
+            Array.prototype.forEach.call(buttons, function (button) {
+                var isActive = button.getAttribute("data-report-tab-target") === targetId;
+                button.classList.toggle("is-active", isActive);
+                button.setAttribute("aria-selected", isActive ? "true" : "false");
+                button.setAttribute("tabindex", isActive ? "0" : "-1");
+            });
+
+            Array.prototype.forEach.call(panels, function (panel) {
+                var isActive = panel.id === targetId;
+                panel.hidden = !isActive;
+                panel.classList.toggle("is-active", isActive);
+            });
+        }
+
+        Array.prototype.forEach.call(buttons, function (button) {
+            button.addEventListener("click", function () {
+                activateTab(button.getAttribute("data-report-tab-target"));
+            });
+        });
+
+        var initialTab = tabRoot.getAttribute("data-report-initial-tab") || "exports";
+        var initialPanelMap = {
+            exports: "reports-exports-panel",
+            insights: "reports-insights-panel",
+            borrowing: "reports-borrowing-panel",
+            audit: "reports-audit-panel"
+        };
+
+        activateTab(initialPanelMap[initialTab] || "reports-exports-panel");
+    })();
+</script>
 </body>
 </html>
 

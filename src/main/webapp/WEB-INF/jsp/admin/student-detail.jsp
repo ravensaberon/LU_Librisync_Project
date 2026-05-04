@@ -224,14 +224,35 @@
             </div>
 
             <div class="panel-card danger-card">
-                <div class="section-title">Delete account</div>
-                <p class="helper-copy mb-3">
-                    This removes the student account only when there are no active issued or overdue books linked to the borrower.
-                </p>
-                <form method="post" action="${pageContext.request.contextPath}/admin/students/${student.studentId}/delete">
-                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                    <button class="btn btn-danger" type="submit">Delete student account</button>
-                </form>
+                <c:choose>
+                    <c:when test="${student.user.status.name() == 'ARCHIVED'}">
+                        <div class="section-title">Archived account actions</div>
+                        <p class="helper-copy mb-3">
+                            Restore the borrower account back to the active directory, or permanently delete it if the archive should be final.
+                        </p>
+                        <div class="d-flex flex-wrap gap-2">
+                            <form method="post" action="${pageContext.request.contextPath}/admin/students/${student.studentId}/restore">
+                                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                                <button class="btn btn-warm" type="submit">Restore student account</button>
+                            </form>
+                            <form method="post" action="${pageContext.request.contextPath}/admin/students/${student.studentId}/delete">
+                                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                                <input type="hidden" name="view" value="${studentView}">
+                                <button class="btn btn-danger" type="submit">Delete account permanently</button>
+                            </form>
+                        </div>
+                    </c:when>
+                    <c:otherwise>
+                        <div class="section-title">Archive account</div>
+                        <p class="helper-copy mb-3">
+                            Archive this borrower instead of deleting right away. This only works when the student has no active issued or overdue books linked to the borrower.
+                        </p>
+                        <form method="post" action="${pageContext.request.contextPath}/admin/students/${student.studentId}/archive">
+                            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                            <button class="btn btn-danger" type="submit">Archive student account</button>
+                        </form>
+                    </c:otherwise>
+                </c:choose>
             </div>
         </div>
     </section>

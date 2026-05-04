@@ -276,42 +276,56 @@
                 <div class="panel-card chart-card">
                     <div class="chart-header">
                         <div class="chart-copy">
-                            <div class="section-title mb-2">7-day circulation graph</div>
-                            <p>Compare daily book issues and completed returns from the past week for a clearer view of library circulation.</p>
+                            <div class="section-title mb-2" id="circulationChartTitle">Interactive circulation graph</div>
+                            <p id="circulationChartDescription">Switch between day, week, month, and year views to monitor borrowing activity at the level you need.</p>
                         </div>
-                        <div class="chart-legend">
-                            <span class="legend-pill"><span class="legend-dot issued"></span>Issued</span>
-                            <span class="legend-pill"><span class="legend-dot returned"></span>Returned</span>
+                        <div class="chart-toolbar">
+                            <div class="chart-range-switcher" role="tablist" aria-label="Circulation chart range">
+                                <c:forEach items="${circulationChartSeries}" var="series" varStatus="status">
+                                    <button class="chart-range-button <c:if test='${status.first}'>is-active</c:if>"
+                                            type="button"
+                                            role="tab"
+                                            aria-selected="${status.first ? 'true' : 'false'}"
+                                            data-circulation-range-button
+                                            data-circulation-range="${series.key}">
+                                            ${series.label}
+                                    </button>
+                                </c:forEach>
+                            </div>
+                            <div class="chart-legend">
+                                <span class="legend-pill"><span class="legend-dot issued"></span>Issued</span>
+                                <span class="legend-pill"><span class="legend-dot returned"></span>Returned</span>
+                            </div>
                         </div>
                     </div>
                     <div class="chart-layout">
                         <div class="chart-canvas-shell">
-                            <canvas id="circulationChart" aria-label="Weekly circulation chart"></canvas>
+                            <canvas id="circulationChart" aria-label="Interactive circulation chart"></canvas>
                         </div>
                         <div class="chart-summary-grid">
                             <div class="chart-summary-card">
-                                <span class="chart-summary-label">Issued this cycle</span>
-                                <strong class="chart-summary-value">${issuedCount}</strong>
-                                <span class="chart-summary-note">Books currently out in circulation.</span>
+                                <span class="chart-summary-label">Issued in view</span>
+                                <strong class="chart-summary-value" id="circulationIssuedTotal">0</strong>
+                                <span class="chart-summary-note" id="circulationIssuedNote">Books issued in the selected range.</span>
                             </div>
                             <div class="chart-summary-card">
-                                <span class="chart-summary-label">Overdue cases</span>
-                                <strong class="chart-summary-value">${overdueCount}</strong>
-                                <span class="chart-summary-note">Items already beyond their due date.</span>
+                                <span class="chart-summary-label">Returned in view</span>
+                                <strong class="chart-summary-value" id="circulationReturnedTotal">0</strong>
+                                <span class="chart-summary-note" id="circulationReturnedNote">Books returned in the selected range.</span>
                             </div>
                             <div class="chart-summary-card">
-                                <span class="chart-summary-label">Available books</span>
-                                <strong class="chart-summary-value">${availableCount}</strong>
-                                <span class="chart-summary-note">Titles ready for new issue transactions.</span>
+                                <span class="chart-summary-label" id="circulationPeakLabel">Peak issued in a day</span>
+                                <strong class="chart-summary-value" id="circulationPeakValue">0</strong>
+                                <span class="chart-summary-note" id="circulationPeakNote">Highest borrowing spike inside this view.</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="dashboard-tab-stack">
-                    <div class="panel-card">
+                <div class="dashboard-insight-grid">
+                    <div class="panel-card dashboard-insight-card">
                         <div class="section-title">Most borrowed books</div>
-                        <ul class="list-clean">
+                        <ul class="list-clean dashboard-ranked-list">
                             <c:forEach items="${mostBorrowedBooks}" var="item">
                                 <li class="d-flex justify-content-between align-items-center">
                                     <span>${item.title}</span>
@@ -323,29 +337,19 @@
                             </c:if>
                         </ul>
 
-                        <hr class="my-4">
-
-                        <div class="section-title">Admin focus areas</div>
-                        <div class="support-list">
+                        <div class="section-title dashboard-mini-heading">Admin focus areas</div>
+                        <div class="support-list dashboard-mini-focus">
                             <div class="support-item">
-                                <strong>Daily circulation monitoring</strong>
-                                <span>Use the graph and recent activity table to spot borrowing spikes, slow returns, and overdue trends quickly.</span>
-                            </div>
-                            <div class="support-item">
-                                <strong>Collection maintenance</strong>
-                                <span>Keep books, categories, and authors updated so students can browse a cleaner and more accurate catalog.</span>
-                            </div>
-                            <div class="support-item">
-                                <strong>Student account follow-up</strong>
-                                <span>Open student details to review active loans, fines, and borrowing history before handling concerns at the desk.</span>
+                                <strong>Interactive circulation monitoring</strong>
+                                <span>Switch between daily, weekly, monthly, and yearly views to spot spikes, slow returns, and longer-term borrowing patterns quickly.</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="panel-card">
+                    <div class="panel-card dashboard-insight-card">
                         <div class="section-title">Recent audit trail</div>
-                        <div class="audit-timeline">
-                            <c:forEach items="${recentAuditLogs}" var="log">
+                        <div class="audit-timeline dashboard-audit-timeline">
+                            <c:forEach items="${recentAuditLogsPage.items}" var="log">
                                 <div class="audit-item">
                                     <div class="audit-item-badge"><i class="bi bi-shield-check"></i></div>
                                     <div>
@@ -357,10 +361,27 @@
                                     </div>
                                 </div>
                             </c:forEach>
-                            <c:if test="${empty recentAuditLogs}">
+                            <c:if test="${empty recentAuditLogsPage.items}">
                                 <div class="muted-text">Audit trail data will appear after admin and system actions are recorded.</div>
                             </c:if>
                         </div>
+                        <c:if test="${recentAuditLogsPage.totalPages > 1}">
+                            <nav class="mt-4" aria-label="Recent audit trail pages">
+                                <ul class="pagination justify-content-center mb-0">
+                                    <li class="page-item <c:if test='${!recentAuditLogsPage.hasPrevious}'>disabled</c:if>">
+                                        <a class="page-link" href="${pageContext.request.contextPath}/admin/dashboard?auditPage=${recentAuditLogsPage.previousPage}#admin-circulation-panel">Previous</a>
+                                    </li>
+                                    <c:forEach begin="${recentAuditLogsPage.startPage}" end="${recentAuditLogsPage.endPage}" var="pageNumber">
+                                        <li class="page-item <c:if test='${pageNumber == recentAuditLogsPage.page}'>active</c:if>">
+                                            <a class="page-link" href="${pageContext.request.contextPath}/admin/dashboard?auditPage=${pageNumber}#admin-circulation-panel">${pageNumber}</a>
+                                        </li>
+                                    </c:forEach>
+                                    <li class="page-item <c:if test='${!recentAuditLogsPage.hasNext}'>disabled</c:if>">
+                                        <a class="page-link" href="${pageContext.request.contextPath}/admin/dashboard?auditPage=${recentAuditLogsPage.nextPage}#admin-circulation-panel">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </c:if>
                     </div>
                 </div>
             </div>
@@ -518,7 +539,12 @@
             });
         });
 
-        resetView();
+        var activeTabFromHash = window.location.hash ? window.location.hash.replace("#", "") : "";
+        if (activeTabFromHash && document.getElementById(activeTabFromHash)) {
+            activateTab(activeTabFromHash);
+        } else {
+            resetView();
+        }
     })();
 </script>
 <script>
@@ -530,56 +556,151 @@
 
         var chartInstance;
         var circulationPanel = document.getElementById("admin-circulation-panel");
+        var rangeButtons = document.querySelectorAll("[data-circulation-range-button]");
+        var titleNode = document.getElementById("circulationChartTitle");
+        var descriptionNode = document.getElementById("circulationChartDescription");
+        var issuedTotalNode = document.getElementById("circulationIssuedTotal");
+        var returnedTotalNode = document.getElementById("circulationReturnedTotal");
+        var peakLabelNode = document.getElementById("circulationPeakLabel");
+        var peakValueNode = document.getElementById("circulationPeakValue");
+        var peakNoteNode = document.getElementById("circulationPeakNote");
+        var activeRange = "day";
 
-        var labels = [
-            <c:forEach items="${weeklyChart}" var="point" varStatus="status">
-                "${point.label}"<c:if test="${!status.last}">,</c:if>
+        var chartSeries = {
+            <c:forEach items="${circulationChartSeries}" var="series" varStatus="seriesStatus">
+            "${series.key}": {
+                label: "${series.label}",
+                title: "${series.title}",
+                description: "${series.description}",
+                bucketLabel: "${series.bucketLabel}",
+                issuedTotal: ${series.issuedTotal},
+                returnedTotal: ${series.returnedTotal},
+                peakIssued: ${series.peakIssued},
+                peakReturned: ${series.peakReturned},
+                points: [
+                    <c:forEach items="${series.points}" var="point" varStatus="pointStatus">
+                    {
+                        label: "${point.label}",
+                        issuedCount: ${point.issuedCount},
+                        returnedCount: ${point.returnedCount}
+                    }<c:if test="${!pointStatus.last}">,</c:if>
+                    </c:forEach>
+                ]
+            }<c:if test="${!seriesStatus.last}">,</c:if>
             </c:forEach>
-        ];
+        };
 
-        var issuedData = [
-            <c:forEach items="${weeklyChart}" var="point" varStatus="status">
-                ${point.issuedCount}<c:if test="${!status.last}">,</c:if>
-            </c:forEach>
-        ];
+        function bucketLabelWord(bucketLabel, amount) {
+            if (amount === 1) {
+                return bucketLabel;
+            }
+            if (bucketLabel === "day") {
+                return "days";
+            }
+            if (bucketLabel === "week") {
+                return "weeks";
+            }
+            if (bucketLabel === "month") {
+                return "months";
+            }
+            return "years";
+        }
 
-        var returnedData = [
-            <c:forEach items="${weeklyChart}" var="point" varStatus="status">
-                ${point.returnedCount}<c:if test="${!status.last}">,</c:if>
-            </c:forEach>
-        ];
+        function updateSummary(series) {
+            if (!series) {
+                return;
+            }
+
+            if (titleNode) {
+                titleNode.textContent = series.title;
+            }
+
+            if (descriptionNode) {
+                descriptionNode.textContent = series.description;
+            }
+
+            if (issuedTotalNode) {
+                issuedTotalNode.textContent = series.issuedTotal;
+            }
+
+            if (returnedTotalNode) {
+                returnedTotalNode.textContent = series.returnedTotal;
+            }
+
+            if (peakLabelNode) {
+                peakLabelNode.textContent = "Peak issued in a " + series.bucketLabel;
+            }
+
+            if (peakValueNode) {
+                peakValueNode.textContent = series.peakIssued;
+            }
+
+            if (peakNoteNode) {
+                peakNoteNode.textContent = "Highest borrowing spike across the selected " + bucketLabelWord(series.bucketLabel, 2) + ".";
+            }
+        }
+
+        function syncRangeButtons(nextRange) {
+            Array.prototype.forEach.call(rangeButtons, function (button) {
+                var isActive = button.getAttribute("data-circulation-range") === nextRange;
+                button.classList.toggle("is-active", isActive);
+                button.setAttribute("aria-selected", isActive ? "true" : "false");
+            });
+        }
+
+        function buildDataset(series) {
+            return {
+                labels: series.points.map(function (point) {
+                    return point.label;
+                }),
+                datasets: [
+                    {
+                        type: "bar",
+                        label: "Issued",
+                        data: series.points.map(function (point) {
+                            return point.issuedCount;
+                        }),
+                        backgroundColor: "rgba(15, 127, 52, 0.88)",
+                        borderRadius: 12,
+                        borderSkipped: false,
+                        maxBarThickness: 34
+                    },
+                    {
+                        type: "bar",
+                        label: "Returned",
+                        data: series.points.map(function (point) {
+                            return point.returnedCount;
+                        }),
+                        backgroundColor: "rgba(145, 213, 166, 0.96)",
+                        borderRadius: 12,
+                        borderSkipped: false,
+                        maxBarThickness: 34
+                    }
+                ]
+            };
+        }
 
         function renderChart() {
+            var currentSeries = chartSeries[activeRange] || chartSeries.day;
+            if (!currentSeries) {
+                return;
+            }
+
+            var chartData = buildDataset(currentSeries);
+            updateSummary(currentSeries);
+            syncRangeButtons(activeRange);
+
             if (chartInstance) {
-                chartInstance.resize();
+                chartInstance.data.labels = chartData.labels;
+                chartInstance.data.datasets[0].data = chartData.datasets[0].data;
+                chartInstance.data.datasets[1].data = chartData.datasets[1].data;
+                chartInstance.update();
                 return;
             }
 
             chartInstance = new Chart(chartCanvas, {
                 type: "bar",
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            type: "bar",
-                            label: "Issued",
-                            data: issuedData,
-                            backgroundColor: "rgba(15, 127, 52, 0.88)",
-                            borderRadius: 12,
-                            borderSkipped: false,
-                            maxBarThickness: 34
-                        },
-                        {
-                            type: "bar",
-                            label: "Returned",
-                            data: returnedData,
-                            backgroundColor: "rgba(145, 213, 166, 0.96)",
-                            borderRadius: 12,
-                            borderSkipped: false,
-                            maxBarThickness: 34
-                        }
-                    ]
-                },
+                data: chartData,
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -635,6 +756,13 @@
                 }
             });
         }
+
+        Array.prototype.forEach.call(rangeButtons, function (button) {
+            button.addEventListener("click", function () {
+                activeRange = button.getAttribute("data-circulation-range") || "day";
+                renderChart();
+            });
+        });
 
         document.addEventListener("dashboard:tabchange", function (event) {
             if (!event.detail || event.detail.panelId !== "admin-circulation-panel") {

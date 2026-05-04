@@ -336,6 +336,72 @@ public class EmailNotificationService {
                 .ifPresent(emailNotificationRepository::delete);
     }
 
+    @Transactional
+    public void queueReservationExpiredNotification(Reservation reservation) {
+        if (reservation == null || reservation.getStudent() == null || reservation.getStudent().getUser() == null) {
+            return;
+        }
+
+        User recipient = reservation.getStudent().getUser();
+        String subject = reservation.isBorrowRequest()
+                ? "Borrow Request Expired | Request #" + reservation.getId() + " | " + reservation.getBook().getTitle()
+                : "Reservation Expired | Reservation #" + reservation.getId() + " | " + reservation.getBook().getTitle();
+
+        String headline = reservation.isBorrowRequest() ? "Borrow Request Expired" : "Reservation Expired";
+        String subheadline = reservation.isBorrowRequest()
+                ? "Your borrow request hold window has passed without a pickup."
+                : "Your reservation hold window has passed without a claim.";
+        String bodyText = reservation.isBorrowRequest()
+                ? "Your borrow request hold window has expired. The copy has been released back to the circulation queue. You may submit a new borrow request if you still need this book."
+                : "Your reservation hold window has expired. The copy has been released to the next person in queue. You may place a new reservation if you still need this book.";
+
+        String body = """
+                <div style="margin:0;padding:24px;background:#f4faf6;font-family:Segoe UI,Arial,sans-serif;color:#163322;">
+                  <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #d5eadc;border-radius:24px;overflow:hidden;box-shadow:0 18px 44px rgba(18,77,47,0.12);">
+                    <div style="padding:24px 32px;background:linear-gradient(135deg,#b71c1c,#e53935);color:#ffffff;">
+                      <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.88;">LU Librisync</div>
+                      <h1 style="margin:10px 0 4px;font-size:28px;line-height:1.2;">%s</h1>
+                      <p style="margin:0;font-size:15px;opacity:0.92;">%s</p>
+                    </div>
+                    <div style="padding:32px;">
+                      <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello %s,</p>
+                      <p style="margin:0 0 20px;font-size:15px;line-height:1.7;">%s</p>
+                      <div style="margin:0 0 24px;padding:20px;border-radius:18px;background:#fbfefd;border:1px solid #e0efe4;">
+                        <div style="font-size:15px;font-weight:700;color:#18452d;margin-bottom:12px;">Details</div>
+                        <table style="width:100%%;border-collapse:collapse;font-size:14px;line-height:1.6;">
+                          <tr><td style="padding:6px 0;color:#5f7b69;">Book Title</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#173522;">%s</td></tr>
+                          <tr><td style="padding:6px 0;color:#5f7b69;">Student ID</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#173522;">%s</td></tr>
+                          <tr><td style="padding:6px 0;color:#5f7b69;">Status</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#c0392b;">Expired &amp; Cancelled</td></tr>
+                        </table>
+                      </div>
+                      <div style="padding:16px 18px;border-radius:16px;background:#fff8ea;border:1px solid #f1ddb1;color:#6b5112;font-size:13px;line-height:1.7;">
+                        If you still need this book, visit the catalog to place a new request. Contact the library if you have any questions.
+                      </div>
+                    </div>
+                    <div style="padding:18px 32px;background:#f6fbf7;border-top:1px solid #e1efe5;font-size:12px;line-height:1.7;color:#6c8375;">
+                      This is an automated message from LU Librisync. Please do not reply to this email.
+                    </div>
+                  </div>
+                </div>
+                """.formatted(
+                escapeHtml(headline),
+                escapeHtml(subheadline),
+                escapeHtml(recipient.getName()),
+                escapeHtml(bodyText),
+                escapeHtml(reservation.getBook().getTitle()),
+                escapeHtml(reservation.getStudent().getStudentId())
+        );
+
+        EmailNotification notification = new EmailNotification();
+        notification.setUser(recipient);
+        notification.setNotificationType(EmailNotificationType.RESERVATION_EXPIRED);
+        notification.setSubject(subject);
+        notification.setBody(body);
+        notification.setScheduledAt(LocalDateTime.now());
+        notification.setStatus(EmailNotificationStatus.PENDING);
+        emailNotificationRepository.save(notification);
+    }
+
     @Scheduled(fixedDelay = 300000)
     @Transactional
     public void processPendingNotifications() {
@@ -349,7 +415,8 @@ public class EmailNotificationService {
                     || notification.getNotificationType() == EmailNotificationType.DUE_REMINDER_3_DAYS
                     || notification.getNotificationType() == EmailNotificationType.DUE_REMINDER_1_DAY
                     || notification.getNotificationType() == EmailNotificationType.DUE_REMINDER_ON_DATE
-                    || notification.getNotificationType() == EmailNotificationType.RESERVATION_READY;
+                    || notification.getNotificationType() == EmailNotificationType.RESERVATION_READY
+                    || notification.getNotificationType() == EmailNotificationType.RESERVATION_EXPIRED;
             boolean sent = sendEmail(notification.getUser().getEmail(), notification.getSubject(), notification.getBody(), isHtml);
             notification.setSentAt(LocalDateTime.now());
             notification.setStatus(sent ? EmailNotificationStatus.SENT : EmailNotificationStatus.FAILED);

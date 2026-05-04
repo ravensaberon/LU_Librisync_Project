@@ -1,6 +1,7 @@
 package com.lulibrisync.service;
 
 import com.lulibrisync.dto.AdminDashboardChartPoint;
+import com.lulibrisync.dto.AdminDashboardChartSeries;
 import com.lulibrisync.model.AdminNotificationType;
 import com.lulibrisync.model.Book;
 import com.lulibrisync.model.IssueRecord;
@@ -18,15 +19,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.IntStream;
 
 @Service
 @SuppressWarnings("null")
@@ -411,47 +416,18 @@ public class IssueService {
         issueRecordRepository.delete(issueRecord);
     }
 
+    public List<AdminDashboardChartSeries> getCirculationChartSeries() {
+        List<IssueRecord> issueRecords = issueRecordRepository.findAll();
+        return List.of(
+                buildDailyChartSeries(issueRecords),
+                buildWeeklyChartSeries(issueRecords),
+                buildMonthlyChartSeries(issueRecords),
+                buildYearlyChartSeries(issueRecords)
+        );
+    }
+
     public List<AdminDashboardChartPoint> getWeeklyCirculationChart() {
-        LocalDate today = LocalDate.now();
-        LocalDate startDate = today.minusDays(6);
-        Map<LocalDate, long[]> chartData = new LinkedHashMap<>();
-
-        for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
-            chartData.put(date, new long[]{0L, 0L});
-        }
-
-        for (IssueRecord issueRecord : issueRecordRepository.findAll()) {
-            if (issueRecord.getIssueDate() != null) {
-                LocalDate issueDate = issueRecord.getIssueDate().toLocalDate();
-                if (!issueDate.isBefore(startDate) && !issueDate.isAfter(today)) {
-                    chartData.get(issueDate)[0]++;
-                }
-            }
-
-            if (issueRecord.getReturnDate() != null) {
-                LocalDate returnDate = issueRecord.getReturnDate().toLocalDate();
-                if (!returnDate.isBefore(startDate) && !returnDate.isAfter(today)) {
-                    chartData.get(returnDate)[1]++;
-                }
-            }
-        }
-
-        long maxValue = 1;
-        for (long[] values : chartData.values()) {
-            maxValue = Math.max(maxValue, Math.max(values[0], values[1]));
-        }
-
-        final long chartMaxValue = maxValue;
-        DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH);
-        return chartData.entrySet().stream()
-                .map(entry -> new AdminDashboardChartPoint(
-                        labelFormatter.format(entry.getKey()),
-                        entry.getValue()[0],
-                        entry.getValue()[1],
-                        heightPercentage(entry.getValue()[0], chartMaxValue),
-                        heightPercentage(entry.getValue()[1], chartMaxValue)
-                ))
-                .toList();
+        return buildWeeklyChartSeries(issueRecordRepository.findAll()).getPoints();
     }
 
     private BigDecimal calculateFine(Book book, LocalDateTime dueDate, LocalDateTime referenceDate) {
@@ -499,5 +475,156 @@ public class IssueService {
             return 0;
         }
         return Math.max(18, (int) Math.round((value * 100.0) / maxValue));
+    }
+
+    private AdminDashboardChartSeries buildDailyChartSeries(List<IssueRecord> issueRecords) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(13);
+        DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH);
+        List<LocalDate> buckets = IntStream.range(0, 14)
+                .mapToObj(startDate::plusDays)
+                .toList();
+        return buildChartSeries(
+                "day",
+                "Daily",
+                "Daily borrowing activity",
+                "Track books issued and returned each day across the last 14 days.",
+                "day",
+                buckets,
+                Function.identity(),
+                labelFormatter::format,
+                issueRecords
+        );
+    }
+
+    private AdminDashboardChartSeries buildWeeklyChartSeries(List<IssueRecord> issueRecords) {
+        LocalDate currentWeekStart = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate startWeek = currentWeekStart.minusWeeks(7);
+        DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH);
+        List<LocalDate> buckets = IntStream.range(0, 8)
+                .mapToObj(startWeek::plusWeeks)
+                .toList();
+        return buildChartSeries(
+                "week",
+                "Weekly",
+                "Weekly borrowing trend",
+                "Compare circulation volume week by week to catch demand spikes and return slowdowns.",
+                "week",
+                buckets,
+                date -> date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)),
+                labelFormatter::format,
+                issueRecords
+        );
+    }
+
+    private AdminDashboardChartSeries buildMonthlyChartSeries(List<IssueRecord> issueRecords) {
+        LocalDate currentMonthStart = LocalDate.now().withDayOfMonth(1);
+        LocalDate startMonth = currentMonthStart.minusMonths(11);
+        DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH);
+        List<LocalDate> buckets = IntStream.range(0, 12)
+                .mapToObj(startMonth::plusMonths)
+                .toList();
+        return buildChartSeries(
+                "month",
+                "Monthly",
+                "Monthly borrowing trend",
+                "Review long-range borrowing volume by month to support planning and collection decisions.",
+                "month",
+                buckets,
+                date -> date.withDayOfMonth(1),
+                labelFormatter::format,
+                issueRecords
+        );
+    }
+
+    private AdminDashboardChartSeries buildYearlyChartSeries(List<IssueRecord> issueRecords) {
+        LocalDate currentYearStart = LocalDate.now().withDayOfYear(1);
+        LocalDate startYear = currentYearStart.minusYears(4);
+        DateTimeFormatter labelFormatter = DateTimeFormatter.ofPattern("yyyy", Locale.ENGLISH);
+        List<LocalDate> buckets = IntStream.range(0, 5)
+                .mapToObj(startYear::plusYears)
+                .toList();
+        return buildChartSeries(
+                "year",
+                "Yearly",
+                "Year-over-year borrowing trend",
+                "Keep an eye on broader circulation growth across the last five years.",
+                "year",
+                buckets,
+                date -> date.withDayOfYear(1),
+                labelFormatter::format,
+                issueRecords
+        );
+    }
+
+    private AdminDashboardChartSeries buildChartSeries(String key,
+                                                       String label,
+                                                       String title,
+                                                       String description,
+                                                       String bucketLabel,
+                                                       List<LocalDate> buckets,
+                                                       Function<LocalDate, LocalDate> bucketResolver,
+                                                       Function<LocalDate, String> labelFormatter,
+                                                       List<IssueRecord> issueRecords) {
+        Map<LocalDate, long[]> chartData = new LinkedHashMap<>();
+        for (LocalDate bucket : buckets) {
+            chartData.put(bucket, new long[]{0L, 0L});
+        }
+
+        LocalDate firstBucket = buckets.get(0);
+        LocalDate lastBucket = buckets.get(buckets.size() - 1);
+
+        for (IssueRecord issueRecord : issueRecords) {
+            if (issueRecord.getIssueDate() != null) {
+                LocalDate issueBucket = bucketResolver.apply(issueRecord.getIssueDate().toLocalDate());
+                if (!issueBucket.isBefore(firstBucket) && !issueBucket.isAfter(lastBucket) && chartData.containsKey(issueBucket)) {
+                    chartData.get(issueBucket)[0]++;
+                }
+            }
+
+            if (issueRecord.getReturnDate() != null) {
+                LocalDate returnBucket = bucketResolver.apply(issueRecord.getReturnDate().toLocalDate());
+                if (!returnBucket.isBefore(firstBucket) && !returnBucket.isAfter(lastBucket) && chartData.containsKey(returnBucket)) {
+                    chartData.get(returnBucket)[1]++;
+                }
+            }
+        }
+
+        long issuedTotal = 0;
+        long returnedTotal = 0;
+        long peakIssued = 0;
+        long peakReturned = 0;
+        long chartMaxValue = 1;
+        for (long[] values : chartData.values()) {
+            issuedTotal += values[0];
+            returnedTotal += values[1];
+            peakIssued = Math.max(peakIssued, values[0]);
+            peakReturned = Math.max(peakReturned, values[1]);
+            chartMaxValue = Math.max(chartMaxValue, Math.max(values[0], values[1]));
+        }
+
+        final long maxValue = chartMaxValue;
+        List<AdminDashboardChartPoint> points = chartData.entrySet().stream()
+                .map(entry -> new AdminDashboardChartPoint(
+                        labelFormatter.apply(entry.getKey()),
+                        entry.getValue()[0],
+                        entry.getValue()[1],
+                        heightPercentage(entry.getValue()[0], maxValue),
+                        heightPercentage(entry.getValue()[1], maxValue)
+                ))
+                .toList();
+
+        return new AdminDashboardChartSeries(
+                key,
+                label,
+                title,
+                description,
+                bucketLabel,
+                points,
+                issuedTotal,
+                returnedTotal,
+                peakIssued,
+                peakReturned
+        );
     }
 }

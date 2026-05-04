@@ -225,7 +225,7 @@ public class ReservationService {
 
     @Transactional
     public Reservation placeReservation(Long bookId, String email) {
-        return placeReservation(bookId, email, LocalDate.now());
+        return placeReservation(bookId, email, null);
     }
 
     @Transactional
@@ -246,21 +246,13 @@ public class ReservationService {
             throw new IllegalArgumentException("You already have an active reservation for this book.");
         }
 
-        LocalDate requestedPickupDate = preferredPickupDate == null ? LocalDate.now() : preferredPickupDate;
-        if (requestedPickupDate.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Preferred pickup date cannot be earlier than today.");
-        }
-        if (requestedPickupDate.isAfter(LocalDate.now().plusDays(maxPreferredPickupDays))) {
-            throw new IllegalArgumentException("Preferred pickup date is too far ahead. Please choose a nearer date.");
-        }
-
         Reservation reservation = new Reservation();
         reservation.setBook(book);
         reservation.setStudent(student);
         reservation.setRequestType(ReservationRequestType.RESERVATION);
         reservation.setStatus(ReservationStatus.PENDING);
         reservation.setReservedAt(LocalDateTime.now());
-        reservation.setPreferredPickupDate(requestedPickupDate);
+        reservation.setPreferredPickupDate(null);
         reservation.setQueuePosition((int) reservationRepository.countByBook_IdAndStatusInAndRequestType(bookId, ACTIVE_STATUSES, ReservationRequestType.RESERVATION) + 1);
 
         Reservation savedReservation = reservationRepository.save(reservation);
@@ -268,7 +260,7 @@ public class ReservationService {
                 student.getUser().getEmail(),
                 AdminNotificationType.RESERVATION_STATUS,
                 "Reservation placed",
-                "Your reservation for " + book.getTitle() + " was placed for " + savedReservation.getPreferredPickupDateDisplay() + ".",
+                "Your reservation for " + book.getTitle() + " was placed. You will be notified when a copy is ready for pickup.",
                 "/student/reservations?tab=queue"
         );
         adminNotificationService.notifyAdmins(
@@ -476,6 +468,7 @@ public class ReservationService {
         List<Reservation> expiredReservations = reservationRepository.findByStatusAndExpiresAtBefore(ReservationStatus.READY, LocalDateTime.now());
         for (Reservation reservation : expiredReservations) {
             emailNotificationService.cancelReservationReadyNotification(reservation);
+            emailNotificationService.queueReservationExpiredNotification(reservation);
             reservation.setStatus(ReservationStatus.CANCELLED);
             reservation.setExpiresAt(null);
             reservationRepository.save(reservation);

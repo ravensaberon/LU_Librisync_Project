@@ -350,7 +350,6 @@ public class BookController {
         model.addAttribute("readableBookCoverByBookId", readableBookCoverByBookId);
         model.addAttribute("nextAvailableDateByBookId", issueService.getNextAvailableDatesByBookIds(booksPage.getItems().stream().map(book -> book.getId()).toList()));
         model.addAttribute("todayDate", LocalDate.now());
-        model.addAttribute("reservationScheduleMaxDate", LocalDate.now().plusDays(reservationService.getMaxPreferredPickupDays()));
         model.addAttribute("defaultBorrowDueDate", LocalDate.now().plusDays(circulationPolicyService.getMaxLoanDays()));
         model.addAttribute("maxLoanDays", circulationPolicyService.getMaxLoanDays());
         return "student/catalog";

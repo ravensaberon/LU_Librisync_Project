@@ -7,6 +7,7 @@ import com.lulibrisync.model.IssueStatus;
 import com.lulibrisync.model.Reservation;
 import com.lulibrisync.model.ReservationStatus;
 import com.lulibrisync.service.AdminReportingService;
+import com.lulibrisync.util.PaginationUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -33,6 +34,8 @@ public class ReportController {
 
     private static final DateTimeFormatter FILE_DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyyMMdd", Locale.ENGLISH);
+    private static final int BORROWING_PAGE_SIZE = 6;
+    private static final int AUDIT_AND_FINE_PAGE_SIZE = 6;
 
     private final AdminReportingService adminReportingService;
 
@@ -43,12 +46,30 @@ public class ReportController {
     @GetMapping
     public String reports(@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+                          @RequestParam(defaultValue = "exports") String reportTab,
+                          @RequestParam(defaultValue = "1") Integer overduePage,
+                          @RequestParam(defaultValue = "1") Integer reservationPage,
+                          @RequestParam(defaultValue = "1") Integer finePage,
+                          @RequestParam(defaultValue = "1") Integer auditPage,
                           Model model) {
         List<IssueRecord> circulationRecords = adminReportingService.getCirculationRecords(dateFrom, dateTo);
-        List<IssueRecord> overdueRecords = adminReportingService.getOverdueRecords(dateFrom, dateTo);
-        List<Fine> fineRecords = adminReportingService.getFineRecords(dateFrom, dateTo);
-        List<Reservation> reservationRecords = adminReportingService.getReservationRecords(dateFrom, dateTo);
-        List<com.lulibrisync.model.AuditLog> auditRecords = adminReportingService.getAuditRecords(dateFrom, dateTo);
+        List<IssueRecord> overdueRecords = adminReportingService.getOverdueRecords(dateFrom, dateTo).stream()
+                .sorted(Comparator.comparing(IssueRecord::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+        List<Fine> fineRecords = adminReportingService.getFineRecords(dateFrom, dateTo).stream()
+                .sorted(Comparator.comparing(Fine::getCalculatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+        List<Reservation> reservationRecords = adminReportingService.getReservationRecords(dateFrom, dateTo).stream()
+                .sorted(Comparator.comparing(Reservation::getReservedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+        List<com.lulibrisync.model.AuditLog> auditRecords = adminReportingService.getAuditRecords(dateFrom, dateTo).stream()
+                .sorted(Comparator.comparing(com.lulibrisync.model.AuditLog::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+
+        var overdueRecordsPage = PaginationUtils.paginate(overdueRecords, overduePage, BORROWING_PAGE_SIZE);
+        var reservationRecordsPage = PaginationUtils.paginate(reservationRecords, reservationPage, BORROWING_PAGE_SIZE);
+        var fineRecordsPage = PaginationUtils.paginate(fineRecords, finePage, AUDIT_AND_FINE_PAGE_SIZE);
+        var auditRecordsPage = PaginationUtils.paginate(auditRecords, auditPage, AUDIT_AND_FINE_PAGE_SIZE);
 
         BigDecimal unpaidFineTotal = totalFineAmount(fineRecords, FineStatus.UNPAID);
         BigDecimal paidFineTotal = totalFineAmount(fineRecords, FineStatus.PAID);
@@ -81,14 +102,16 @@ public class ReportController {
 
         model.addAttribute("dateFrom", dateFrom);
         model.addAttribute("dateTo", dateTo);
+        model.addAttribute("reportTab", reportTab);
         model.addAttribute("circulationRecords", circulationRecords.stream().limit(12).toList());
-        model.addAttribute("overdueRecords", overdueRecords.stream().limit(10).toList());
-        model.addAttribute("fineRecords", fineRecords.stream().limit(12).toList());
-        model.addAttribute("reservationRecords", reservationRecords.stream()
-                .sorted(Comparator.comparing(Reservation::getReservedAt, Comparator.nullsLast(Comparator.naturalOrder())).reversed())
-                .limit(12)
-                .toList());
-        model.addAttribute("auditRecords", auditRecords.stream().limit(12).toList());
+        model.addAttribute("overdueRecords", overdueRecordsPage.getItems());
+        model.addAttribute("overdueRecordsPage", overdueRecordsPage);
+        model.addAttribute("reservationRecords", reservationRecordsPage.getItems());
+        model.addAttribute("reservationRecordsPage", reservationRecordsPage);
+        model.addAttribute("fineRecords", fineRecordsPage.getItems());
+        model.addAttribute("fineRecordsPage", fineRecordsPage);
+        model.addAttribute("auditRecords", auditRecordsPage.getItems());
+        model.addAttribute("auditRecordsPage", auditRecordsPage);
         model.addAttribute("circulationCount", circulationRecords.size());
         model.addAttribute("returnedCount", circulationRecords.stream().filter(issue -> IssueStatus.RETURNED.equals(issue.getStatus())).count());
         model.addAttribute("activeIssueCount", circulationRecords.stream().filter(issue -> IssueStatus.ISSUED.equals(issue.getStatus()) || IssueStatus.OVERDUE.equals(issue.getStatus())).count());

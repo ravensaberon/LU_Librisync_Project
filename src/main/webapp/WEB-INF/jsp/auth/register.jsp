@@ -366,6 +366,15 @@
                             <p class="field-error" id="lastNameError"></p>
                         </div>
                         <div class="register-block">
+                            <label class="form-label" for="suffix">Suffix</label>
+                            <input class="form-control form-control-lg" id="suffix" name="suffix" type="text" value="${suffixValue}" maxlength="20" autocapitalize="characters" autocomplete="honorific-suffix">
+                            <p class="field-hint">Optional. Example: Jr, Sr, III.</p>
+                            <p class="field-error" id="suffixError"></p>
+                        </div>
+                    </div>
+
+                    <div class="register-grid mt-3">
+                        <div class="register-block">
                             <label class="form-label" for="birthDate">Birthday</label>
                             <input class="form-control form-control-lg" id="birthDate" name="birthDate" type="date" value="${birthDateValue}" required>
                             <p class="field-hint">Your age will be computed automatically.</p>
@@ -599,6 +608,7 @@
         var firstName = document.getElementById("firstName");
         var middleName = document.getElementById("middleName");
         var lastName = document.getElementById("lastName");
+        var suffix = document.getElementById("suffix");
         var birthDate = document.getElementById("birthDate");
         var ageValue = document.getElementById("ageValue");
         var program = document.getElementById("program");
@@ -627,11 +637,12 @@
         var registerSubmitNote = document.getElementById("registerSubmitNote");
         var initialBarangay = barangay.dataset.selectedBarangay || "";
 
-        var fields = [firstName, middleName, lastName, birthDate, program, yearLevel, province, cityMunicipality, barangay, street, zipcode, email, contactNumber, agree];
+        var fields = [firstName, middleName, lastName, suffix, birthDate, program, yearLevel, province, cityMunicipality, barangay, street, zipcode, email, contactNumber, agree];
         var errors = {
             firstName: document.getElementById("firstNameError"),
             middleName: document.getElementById("middleNameError"),
             lastName: document.getElementById("lastNameError"),
+            suffix: document.getElementById("suffixError"),
             birthDate: document.getElementById("birthDateError"),
             program: document.getElementById("programError"),
             yearLevel: document.getElementById("yearLevelError"),
@@ -1053,6 +1064,7 @@
                 return validateName(firstName, "First name", false, silent)
                     && validateName(middleName, "Middle name", true, silent)
                     && validateName(lastName, "Last name", false, silent)
+                    && validateName(suffix, "Suffix", true, silent)
                     && validateBirthDate(silent);
             }
             if (stepIndex === 1) {
@@ -1338,13 +1350,22 @@
             });
         });
 
-        [firstName, middleName, lastName].forEach(function (input) {
+        [firstName, middleName, lastName, suffix].forEach(function (input) {
             input.addEventListener("input", function () {
-                validateName(input, input === middleName ? "Middle name" : input === firstName ? "First name" : "Last name", input === middleName, true);
+                validateName(
+                    input,
+                    input === middleName ? "Middle name" : input === firstName ? "First name" : input === lastName ? "Last name" : "Suffix",
+                    input === middleName || input === suffix,
+                    true
+                );
                 persistDraft();
             });
             input.addEventListener("blur", function () {
-                validateName(input, input === middleName ? "Middle name" : input === firstName ? "First name" : "Last name", input === middleName);
+                validateName(
+                    input,
+                    input === middleName ? "Middle name" : input === firstName ? "First name" : input === lastName ? "Last name" : "Suffix",
+                    input === middleName || input === suffix
+                );
                 persistDraft();
             });
         });

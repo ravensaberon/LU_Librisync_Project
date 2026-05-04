@@ -1,12 +1,12 @@
 package com.lulibrisync.controller;
 
 import com.lulibrisync.service.AuditLogService;
+import com.lulibrisync.service.CirculationPolicyService;
 import com.lulibrisync.service.IssueService;
 import com.lulibrisync.service.ReservationService;
 import com.lulibrisync.util.PaginationUtils;
 import com.lulibrisync.model.Reservation;
 import com.lulibrisync.model.ReservationStatus;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -26,13 +26,16 @@ public class ReservationController {
     private final ReservationService reservationService;
     private final IssueService issueService;
     private final AuditLogService auditLogService;
+    private final CirculationPolicyService circulationPolicyService;
 
     public ReservationController(ReservationService reservationService,
                                  IssueService issueService,
-                                 AuditLogService auditLogService) {
+                                 AuditLogService auditLogService,
+                                 CirculationPolicyService circulationPolicyService) {
         this.reservationService = reservationService;
         this.issueService = issueService;
         this.auditLogService = auditLogService;
+        this.circulationPolicyService = circulationPolicyService;
     }
 
     @GetMapping("/student/reservations")
@@ -52,6 +55,7 @@ public class ReservationController {
         model.addAttribute("queueReservationsPage", queueReservationsPage);
         model.addAttribute("borrowRequestWindowMinutes", reservationService.getBorrowRequestWindowMinutes());
         model.addAttribute("reservationScheduleMaxDate", LocalDate.now().plusDays(reservationService.getMaxPreferredPickupDays()));
+        model.addAttribute("defaultIssueDueDate", LocalDate.now().plusDays(circulationPolicyService.getMaxLoanDays()));
         model.addAttribute("activeTab", "queue".equalsIgnoreCase(tab) ? "queue" : "borrow");
         return "student/reservations";
     }
@@ -62,7 +66,7 @@ public class ReservationController {
                                    Authentication authentication,
                                    RedirectAttributes redirectAttributes) {
         try {
-            var reservation = reservationService.placeReservation(bookId, authentication.getName(), preferredPickupDate);
+            var reservation = reservationService.placeReservation(bookId, authentication.getName());
             auditLogService.log(
                     authentication.getName(),
                     "RESERVATION_CREATED",
@@ -71,12 +75,11 @@ public class ReservationController {
                     "Reservation placed",
                     "Book: " + reservation.getBook().getTitle()
                             + " | Queue: " + reservation.getQueuePosition()
-                            + " | Preferred pickup: " + reservation.getPreferredPickupDate()
             );
             if (ReservationStatus.READY.equals(reservation.getStatus())) {
-                redirectAttributes.addFlashAttribute("success", "Reservation placed. A copy is now ready for desk pickup and staff release.");
+                redirectAttributes.addFlashAttribute("success", "Reservation placed. A copy is ready — you have 24 hours to claim it at the circulation desk.");
             } else {
-                redirectAttributes.addFlashAttribute("success", "Reservation placed for " + reservation.getPreferredPickupDate() + ".");
+                redirectAttributes.addFlashAttribute("success", "Reservation placed. You'll be notified when a copy is ready for pickup.");
             }
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
@@ -188,7 +191,6 @@ public class ReservationController {
 
     @PostMapping("/admin/reservations/{reservationId}/claim")
     public String claimReservation(@PathVariable Long reservationId,
-                                   @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate,
                                    @RequestParam(required = false) String remarks,
                                    @RequestParam(defaultValue = "1") Integer borrowPage,
                                    @RequestParam(defaultValue = "1") Integer queuePage,
@@ -197,7 +199,7 @@ public class ReservationController {
                                    RedirectAttributes redirectAttributes) {
         try {
             Reservation reservation = reservationService.getReservationById(reservationId);
-            claimReservationForPickup(reservation, dueDate, remarks, authentication, redirectAttributes);
+            claimReservationForPickup(reservation, remarks, authentication, redirectAttributes);
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         }
@@ -206,7 +208,6 @@ public class ReservationController {
 
     @PostMapping("/admin/reservations/claim-by-qr")
     public String claimReservationByQr(@RequestParam String qrCode,
-                                       @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate,
                                        @RequestParam(required = false) String remarks,
                                        @RequestParam(defaultValue = "1") Integer borrowPage,
                                        @RequestParam(defaultValue = "1") Integer queuePage,
@@ -215,7 +216,7 @@ public class ReservationController {
                                        RedirectAttributes redirectAttributes) {
         try {
             Reservation reservation = reservationService.getReservationByDeskQrCode(qrCode);
-            claimReservationForPickup(reservation, dueDate, remarks, authentication, redirectAttributes);
+            claimReservationForPickup(reservation, remarks, authentication, redirectAttributes);
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         }
@@ -254,7 +255,6 @@ public class ReservationController {
     }
 
     private void claimReservationForPickup(Reservation reservation,
-                                           LocalDate dueDate,
                                            String remarks,
                                            Authentication authentication,
                                            RedirectAttributes redirectAttributes) {
@@ -278,7 +278,13 @@ public class ReservationController {
             throw new IllegalArgumentException("This reservation is no longer active.");
         }
 
-        var issueRecord = issueService.issueBook(reservation.getBook().getId(), reservation.getStudent().getId(), dueDate, authentication.getName(), remarks);
+        var issueRecord = issueService.issueBook(
+                reservation.getBook().getId(),
+                reservation.getStudent().getId(),
+                LocalDate.now().plusDays(circulationPolicyService.getMaxLoanDays()),
+                authentication.getName(),
+                remarks
+        );
         auditLogService.log(
                 authentication.getName(),
                 "RESERVATION_CLAIMED",

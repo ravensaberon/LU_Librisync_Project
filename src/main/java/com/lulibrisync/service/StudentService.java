@@ -68,10 +68,22 @@ public class StudentService {
     }
 
     public List<Student> searchStudents(String studentIdKeyword) {
+        return searchStudents(studentIdKeyword, false);
+    }
+
+    public List<Student> searchStudents(String studentIdKeyword, boolean archivedOnly) {
         if (studentIdKeyword == null || studentIdKeyword.isBlank()) {
-            return studentRepository.findAllByOrderByStudentIdAsc();
+            return studentRepository.findAllByOrderByStudentIdAsc().stream()
+                    .filter(student -> archivedOnly
+                            ? UserStatus.ARCHIVED.equals(student.getUser().getStatus())
+                            : !UserStatus.ARCHIVED.equals(student.getUser().getStatus()))
+                    .toList();
         }
-        return studentRepository.findByStudentIdContainingIgnoreCaseOrderByStudentIdAsc(studentIdKeyword.trim());
+        return studentRepository.findByStudentIdContainingIgnoreCaseOrderByStudentIdAsc(studentIdKeyword.trim()).stream()
+                .filter(student -> archivedOnly
+                        ? UserStatus.ARCHIVED.equals(student.getUser().getStatus())
+                        : !UserStatus.ARCHIVED.equals(student.getUser().getStatus()))
+                .toList();
     }
 
     public BorrowerStanding getBorrowerStanding(Student student) {
@@ -297,6 +309,36 @@ public class StudentService {
         }
 
         userRepository.delete(student.getUser());
+    }
+
+    @Transactional
+    public void archiveStudent(String studentId) {
+        Student student = getStudentByStudentId(studentId);
+        long activeIssues = issueRecordRepository.countByStudent_IdAndStatusIn(student.getId(), List.of(IssueStatus.ISSUED, IssueStatus.OVERDUE));
+        if (activeIssues > 0) {
+            throw new IllegalArgumentException("Resolve all active issues before archiving this student account.");
+        }
+        student.getUser().setStatus(UserStatus.ARCHIVED);
+        userRepository.save(student.getUser());
+    }
+
+    @Transactional
+    public void restoreArchivedStudent(String studentId) {
+        Student student = getStudentByStudentId(studentId);
+        if (!UserStatus.ARCHIVED.equals(student.getUser().getStatus())) {
+            throw new IllegalArgumentException("Only archived student accounts can be restored.");
+        }
+        student.getUser().setStatus(UserStatus.ACTIVE);
+        userRepository.save(student.getUser());
+    }
+
+    @Transactional
+    public void permanentlyDeleteArchivedStudent(String studentId) {
+        Student student = getStudentByStudentId(studentId);
+        if (!UserStatus.ARCHIVED.equals(student.getUser().getStatus())) {
+            throw new IllegalArgumentException("Archive the student account first before permanent deletion.");
+        }
+        deleteStudent(studentId);
     }
 
     public UserStatus[] getAvailableStatuses() {

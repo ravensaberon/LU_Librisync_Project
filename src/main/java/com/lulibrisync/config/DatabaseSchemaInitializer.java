@@ -206,15 +206,15 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
         try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM users LIKE 'status'")) {
             if (columns.next()) {
                 String columnType = columns.getString("Type");
-                if (columnType != null && columnType.contains("PENDING")) {
+                if (columnType != null && columnType.contains("PENDING") && columnType.contains("ARCHIVED")) {
                     return;
                 }
             }
         }
         statement.executeUpdate(
-                "ALTER TABLE users MODIFY COLUMN status ENUM('ACTIVE','INACTIVE','PENDING') NOT NULL DEFAULT 'ACTIVE'"
+                "ALTER TABLE users MODIFY COLUMN status ENUM('ACTIVE','INACTIVE','PENDING','ARCHIVED') NOT NULL DEFAULT 'ACTIVE'"
         );
-        logger.info("Updated users.status enum to include PENDING value for email verification flow.");
+        logger.info("Updated users.status enum to include PENDING and ARCHIVED values.");
     }
 
     private void ensureMustChangePasswordColumn(Statement statement) throws Exception {

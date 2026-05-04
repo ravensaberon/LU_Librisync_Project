@@ -145,6 +145,7 @@ public class AuthController {
     public String register(@RequestParam(required = false) String firstName,
                            @RequestParam(required = false) String middleName,
                            @RequestParam(required = false) String lastName,
+                           @RequestParam(required = false) String suffix,
                            @RequestParam(required = false) String program,
                            @RequestParam(required = false) String yearLevel,
                            @RequestParam(required = false) String email,
@@ -167,6 +168,7 @@ public class AuthController {
                     firstName,
                     middleName,
                     lastName,
+                    suffix,
                     program,
                     yearLevel,
                     email,
@@ -191,6 +193,7 @@ public class AuthController {
                     firstName,
                     middleName,
                     lastName,
+                    suffix,
                     program,
                     yearLevel,
                     email,
@@ -212,6 +215,7 @@ public class AuthController {
                     firstName,
                     middleName,
                     lastName,
+                    suffix,
                     program,
                     yearLevel,
                     email,
@@ -345,6 +349,7 @@ public class AuthController {
                                        String firstName,
                                        String middleName,
                                        String lastName,
+                                       String suffix,
                                        String program,
                                        String yearLevel,
                                        String email,
@@ -360,6 +365,7 @@ public class AuthController {
         model.addAttribute("firstNameValue", firstName);
         model.addAttribute("middleNameValue", middleName);
         model.addAttribute("lastNameValue", lastName);
+        model.addAttribute("suffixValue", suffix);
         model.addAttribute("programValue", program);
         model.addAttribute("yearLevelValue", yearLevel);
         model.addAttribute("emailValue", email);

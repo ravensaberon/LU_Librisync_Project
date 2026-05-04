@@ -100,9 +100,9 @@
                                     <form method="post" action="${pageContext.request.contextPath}/admin/reservations/${reservation.id}/claim" class="d-grid gap-2">
                                         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                                         <input type="hidden" name="queuePage" value="${queueReservationsPage.page}">
-                                        <input class="form-control form-control-sm" name="dueDate" type="date" value="${defaultDueDate}" required>
                                         <input class="form-control form-control-sm" name="remarks" placeholder="Optional remarks">
                                         <button class="btn btn-brand" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Confirm pickup and issue</button>
+                                        <span class="muted-text small">Due date is set automatically using the circulation policy.</span>
                                     </form>
                                 </c:when>
                                 <c:otherwise>
@@ -155,7 +155,7 @@
                     <div>
                         <span class="modal-kicker">Pickup Scan</span>
                         <h2 class="h4 mb-1 mt-2">Scan a student reservation QR</h2>
-                        <p class="modal-subtitle mb-0">Set the due date once, then scan the student's QR so the desk release can be recorded automatically.</p>
+                        <p class="modal-subtitle mb-0">Scan the student's QR so the desk release can be recorded automatically. The due date is set by the circulation policy.</p>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -164,13 +164,10 @@
                         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                         <input type="hidden" name="queuePage" value="${queueReservationsPage.page}">
                         <input type="hidden" name="qrCode" id="reservationQrCodeField">
-                        <div class="col-md-4">
-                            <label class="form-label" for="reservationScannerDueDate">Due date</label>
-                            <input class="form-control" id="reservationScannerDueDate" name="dueDate" type="date" value="${defaultDueDate}" required>
-                        </div>
-                        <div class="col-md-8">
+                        <div class="col-12">
                             <label class="form-label" for="reservationScannerRemarks">Remarks</label>
                             <input class="form-control" id="reservationScannerRemarks" name="remarks" placeholder="Optional remarks for the issued copy">
+                            <div class="form-note mt-2">Due date is assigned automatically when the pickup is confirmed.</div>
                         </div>
                     </form>
                     <div class="scanner-shell">

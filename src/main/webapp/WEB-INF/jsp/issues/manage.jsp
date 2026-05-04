@@ -282,7 +282,6 @@
                                             <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                                             <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
                                             <input type="hidden" name="source" value="issues">
-                                            <input class="form-control form-control-sm" style="width:140px" name="dueDate" type="date" value="${defaultDueDate}" required>
                                             <input class="form-control form-control-sm" style="width:140px" name="remarks" placeholder="Remarks (optional)">
                                             <button class="btn btn-brand btn-sm" type="submit"><i class="bi bi-box-arrow-right me-1"></i>Confirm pickup</button>
                                         </form>
@@ -571,7 +570,7 @@
                     <div>
                         <span class="modal-kicker">Pickup Scan</span>
                         <h2 class="h4 mb-1 mt-2">Scan a student borrow request QR</h2>
-                        <p class="modal-subtitle mb-0">Set the due date, then scan the student's QR to confirm the desk release automatically.</p>
+                        <p class="modal-subtitle mb-0">Scan the student's QR to confirm the desk release automatically. The due date is set by the circulation policy.</p>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -581,13 +580,10 @@
                         <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
                         <input type="hidden" name="source" value="issues">
                         <input type="hidden" name="qrCode" id="borrowQrCodeField">
-                        <div class="col-md-4">
-                            <label class="form-label" for="borrowScannerDueDate">Due date</label>
-                            <input class="form-control" id="borrowScannerDueDate" name="dueDate" type="date" value="${defaultDueDate}" required>
-                        </div>
-                        <div class="col-md-8">
+                        <div class="col-12">
                             <label class="form-label" for="borrowScannerRemarks">Remarks</label>
                             <input class="form-control" id="borrowScannerRemarks" name="remarks" placeholder="Optional remarks for the issued copy">
+                            <div class="form-note mt-2">Due date is assigned automatically when pickup is confirmed.</div>
                         </div>
                     </form>
                     <div id="borrowScannerView">
