@@ -1,0 +1,46 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run LU Librisync (Spring Boot)",
+      "request": "launch",
+      "mainClass": "com.lulibrisync.LuLibrisyncApplication",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "shortenCommandLine": "auto",
+      "env": {
+        "LU_LIBRISYNC_DB_URL": "jdbc:mysql://127.0.0.1:3306/lu_librisync?useSSL=false&serverTimezone=Asia/Manila&allowPublicKeyRetrieval=true",
+        "LU_LIBRISYNC_DB_USERNAME": "${input:dbUsername}",
+        "LU_LIBRISYNC_DB_PASSWORD": "${input:dbPassword}"
+      },
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "Started .* in .* seconds",
+        "uriFormat": "http://localhost:8080"
+      }
+    },
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Open LU Librisync in Chrome (manual)",
+      "url": "http://localhost:8080",
+      "webRoot": "${workspaceFolder}"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "dbUsername",
+      "type": "promptString",
+      "description": "MySQL username",
+      "default": "root"
+    },
+    {
+      "id": "dbPassword",
+      "type": "promptString",
+      "description": "MySQL password",
+      "password": true,
+      "default": ""
+    }
+  ]
+}
