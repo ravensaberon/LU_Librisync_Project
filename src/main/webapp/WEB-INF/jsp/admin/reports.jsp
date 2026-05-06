@@ -9,9 +9,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css?v=20260504-global-side-nav-flush3">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 </head>
 <body>
-<c:set var="activeReportTab" value="${empty reportTab ? 'exports' : reportTab}" />
+<c:set var="activeReportTab" value="${empty reportTab ? 'insights' : reportTab}" />
 <div class="page-shell">
     <div class="app-nav">
         <div>
@@ -124,11 +125,7 @@
         </div>
 
         <div class="dashboard-tab-nav" role="tablist" aria-label="Report center views">
-            <button class="dashboard-tab-button" type="button" role="tab" id="reports-exports-tab" aria-selected="true" aria-controls="reports-exports-panel" data-report-tab-button data-report-tab-target="reports-exports-panel">
-                <i class="bi bi-download"></i>
-                <span>Exports</span>
-            </button>
-            <button class="dashboard-tab-button" type="button" role="tab" id="reports-insights-tab" aria-selected="false" aria-controls="reports-insights-panel" data-report-tab-button data-report-tab-target="reports-insights-panel">
+            <button class="dashboard-tab-button" type="button" role="tab" id="reports-insights-tab" aria-selected="true" aria-controls="reports-insights-panel" data-report-tab-button data-report-tab-target="reports-insights-panel">
                 <i class="bi bi-bar-chart-line"></i>
                 <span>Insights</span>
             </button>
@@ -139,6 +136,10 @@
             <button class="dashboard-tab-button" type="button" role="tab" id="reports-audit-tab" aria-selected="false" aria-controls="reports-audit-panel" data-report-tab-button data-report-tab-target="reports-audit-panel">
                 <i class="bi bi-shield-check"></i>
                 <span>Audit & fines</span>
+            </button>
+            <button class="dashboard-tab-button" type="button" role="tab" id="reports-exports-tab" aria-selected="false" aria-controls="reports-exports-panel" data-report-tab-button data-report-tab-target="reports-exports-panel">
+                <i class="bi bi-download"></i>
+                <span>Exports</span>
             </button>
         </div>
     </section>
@@ -184,6 +185,55 @@
 
         <div class="dashboard-tab-panel" id="reports-insights-panel" role="tabpanel" aria-labelledby="reports-insights-tab" data-report-tab-panel hidden>
             <section class="panel-grid">
+                <div class="panel-card chart-card">
+                    <div class="chart-header">
+                        <div class="chart-copy">
+                            <div class="section-title mb-2" id="reportsCirculationChartTitle">Interactive circulation graph</div>
+                            <p id="reportsCirculationChartDescription">Switch between day, week, month, and year views to monitor borrowing activity at the level you need.</p>
+                        </div>
+                        <div class="chart-toolbar">
+                            <div class="chart-range-switcher" role="tablist" aria-label="Reports circulation chart range">
+                                <c:forEach items="${circulationChartSeries}" var="series" varStatus="status">
+                                    <button class="chart-range-button <c:if test='${status.first}'>is-active</c:if>"
+                                            type="button"
+                                            role="tab"
+                                            aria-selected="${status.first ? 'true' : 'false'}"
+                                            data-reports-circulation-range-button
+                                            data-reports-circulation-range="${series.key}">
+                                            ${series.label}
+                                    </button>
+                                </c:forEach>
+                            </div>
+                            <div class="chart-legend">
+                                <span class="legend-pill"><span class="legend-dot issued"></span>Issued</span>
+                                <span class="legend-pill"><span class="legend-dot returned"></span>Returned</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-layout">
+                        <div class="chart-canvas-shell">
+                            <canvas id="reportsCirculationChart" aria-label="Interactive circulation chart for reports"></canvas>
+                        </div>
+                        <div class="chart-summary-grid">
+                            <div class="chart-summary-card">
+                                <span class="chart-summary-label">Issued in view</span>
+                                <strong class="chart-summary-value" id="reportsCirculationIssuedTotal">0</strong>
+                                <span class="chart-summary-note">Books issued in the selected range.</span>
+                            </div>
+                            <div class="chart-summary-card">
+                                <span class="chart-summary-label">Returned in view</span>
+                                <strong class="chart-summary-value" id="reportsCirculationReturnedTotal">0</strong>
+                                <span class="chart-summary-note">Books returned in the selected range.</span>
+                            </div>
+                            <div class="chart-summary-card">
+                                <span class="chart-summary-label" id="reportsCirculationPeakLabel">Peak issued in a day</span>
+                                <strong class="chart-summary-value" id="reportsCirculationPeakValue">0</strong>
+                                <span class="chart-summary-note" id="reportsCirculationPeakNote">Highest borrowing spike inside this view.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="panel-card">
                     <div class="section-title">Collection and borrower insights</div>
                     <div class="insight-split-grid">
@@ -243,10 +293,19 @@
 
         <div class="dashboard-tab-panel" id="reports-borrowing-panel" role="tabpanel" aria-labelledby="reports-borrowing-tab" data-report-tab-panel hidden>
             <section class="panel-grid panel-grid-equal">
-                <div class="panel-card">
-                    <div class="section-title">Overdue snapshot</div>
+                <div class="panel-card" data-table-search-section data-table-search-empty="No overdue rows matched your search on this page.">
+                    <div class="table-search-header">
+                        <div class="section-title">Overdue snapshot</div>
+                        <div class="table-search-actions">
+                            <span class="table-search-meta" data-table-search-count></span>
+                            <label class="table-search-shell" aria-label="Search overdue snapshot">
+                                <i class="bi bi-search" aria-hidden="true"></i>
+                                <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                            </label>
+                        </div>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table align-middle">
+                        <table class="table align-middle" data-table-search-table>
                             <thead>
                             <tr>
                                 <th>Student</th>
@@ -291,8 +350,17 @@
                     </c:if>
                 </div>
 
-                <div class="panel-card reservation-snapshot-card">
-                    <div class="section-title">Reservation snapshot</div>
+                <div class="panel-card reservation-snapshot-card" data-table-search-section data-table-search-empty="No reservation rows matched your search on this page.">
+                    <div class="table-search-header">
+                        <div class="section-title">Reservation snapshot</div>
+                        <div class="table-search-actions">
+                            <span class="table-search-meta" data-table-search-count></span>
+                            <label class="table-search-shell" aria-label="Search reservation snapshot">
+                                <i class="bi bi-search" aria-hidden="true"></i>
+                                <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                            </label>
+                        </div>
+                    </div>
                     <div class="info-grid reservation-summary-grid mb-3">
                         <div class="info-tile reservation-summary-tile">
                             <span class="info-tile-label">Pending</span>
@@ -312,7 +380,7 @@
                         </div>
                     </div>
                     <div class="table-responsive reservation-table-wrap">
-                        <table class="table align-middle reservation-table">
+                        <table class="table align-middle reservation-table" data-table-search-table>
                             <colgroup>
                                 <col class="reservation-col-book">
                                 <col class="reservation-col-borrower">
@@ -367,10 +435,19 @@
 
         <div class="dashboard-tab-panel" id="reports-audit-panel" role="tabpanel" aria-labelledby="reports-audit-tab" data-report-tab-panel hidden>
             <section class="panel-grid panel-grid-equal">
-                <div class="panel-card">
-                    <div class="section-title">Recent fine activity</div>
+                <div class="panel-card" data-table-search-section data-table-search-empty="No fine activity rows matched your search on this page.">
+                    <div class="table-search-header">
+                        <div class="section-title">Recent fine activity</div>
+                        <div class="table-search-actions">
+                            <span class="table-search-meta" data-table-search-count></span>
+                            <label class="table-search-shell" aria-label="Search recent fine activity">
+                                <i class="bi bi-search" aria-hidden="true"></i>
+                                <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                            </label>
+                        </div>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table align-middle">
+                        <table class="table align-middle" data-table-search-table>
                             <thead>
                             <tr>
                                 <th>Student</th>
@@ -489,7 +566,7 @@
             });
         });
 
-        var initialTab = tabRoot.getAttribute("data-report-initial-tab") || "exports";
+        var initialTab = tabRoot.getAttribute("data-report-initial-tab") || "insights";
         var initialPanelMap = {
             exports: "reports-exports-panel",
             insights: "reports-insights-panel",
@@ -497,10 +574,223 @@
             audit: "reports-audit-panel"
         };
 
-        activateTab(initialPanelMap[initialTab] || "reports-exports-panel");
+        activateTab(initialPanelMap[initialTab] || "reports-insights-panel");
+    })();
+</script>
+<script>
+    (function () {
+        var chartCanvas = document.getElementById("reportsCirculationChart");
+        if (!chartCanvas || typeof Chart === "undefined") {
+            return;
+        }
+
+        var chartInstance;
+        var rangeButtons = document.querySelectorAll("[data-reports-circulation-range-button]");
+        var titleNode = document.getElementById("reportsCirculationChartTitle");
+        var descriptionNode = document.getElementById("reportsCirculationChartDescription");
+        var issuedTotalNode = document.getElementById("reportsCirculationIssuedTotal");
+        var returnedTotalNode = document.getElementById("reportsCirculationReturnedTotal");
+        var peakLabelNode = document.getElementById("reportsCirculationPeakLabel");
+        var peakValueNode = document.getElementById("reportsCirculationPeakValue");
+        var peakNoteNode = document.getElementById("reportsCirculationPeakNote");
+        var activeRange = "day";
+
+        var chartSeries = {
+            <c:forEach items="${circulationChartSeries}" var="series" varStatus="seriesStatus">
+            "${series.key}": {
+                label: "${series.label}",
+                title: "${series.title}",
+                description: "${series.description}",
+                bucketLabel: "${series.bucketLabel}",
+                issuedTotal: ${series.issuedTotal},
+                returnedTotal: ${series.returnedTotal},
+                peakIssued: ${series.peakIssued},
+                peakReturned: ${series.peakReturned},
+                points: [
+                    <c:forEach items="${series.points}" var="point" varStatus="pointStatus">
+                    {
+                        label: "${point.label}",
+                        issuedCount: ${point.issuedCount},
+                        returnedCount: ${point.returnedCount}
+                    }<c:if test="${!pointStatus.last}">,</c:if>
+                    </c:forEach>
+                ]
+            }<c:if test="${!seriesStatus.last}">,</c:if>
+            </c:forEach>
+        };
+
+        function bucketLabelWord(bucketLabel, amount) {
+            if (amount === 1) {
+                return bucketLabel;
+            }
+            if (bucketLabel === "day") {
+                return "days";
+            }
+            if (bucketLabel === "week") {
+                return "weeks";
+            }
+            if (bucketLabel === "month") {
+                return "months";
+            }
+            return "years";
+        }
+
+        function updateSummary(series) {
+            if (!series) {
+                return;
+            }
+
+            if (titleNode) {
+                titleNode.textContent = series.title;
+            }
+            if (descriptionNode) {
+                descriptionNode.textContent = series.description;
+            }
+            if (issuedTotalNode) {
+                issuedTotalNode.textContent = series.issuedTotal;
+            }
+            if (returnedTotalNode) {
+                returnedTotalNode.textContent = series.returnedTotal;
+            }
+            if (peakLabelNode) {
+                peakLabelNode.textContent = "Peak issued in a " + series.bucketLabel;
+            }
+            if (peakValueNode) {
+                peakValueNode.textContent = series.peakIssued;
+            }
+            if (peakNoteNode) {
+                peakNoteNode.textContent = "Highest borrowing spike across the selected " + bucketLabelWord(series.bucketLabel, 2) + ".";
+            }
+        }
+
+        function syncRangeButtons(nextRange) {
+            Array.prototype.forEach.call(rangeButtons, function (button) {
+                var isActive = button.getAttribute("data-reports-circulation-range") === nextRange;
+                button.classList.toggle("is-active", isActive);
+                button.setAttribute("aria-selected", isActive ? "true" : "false");
+            });
+        }
+
+        function buildDataset(series) {
+            return {
+                labels: series.points.map(function (point) {
+                    return point.label;
+                }),
+                datasets: [
+                    {
+                        type: "bar",
+                        label: "Issued",
+                        data: series.points.map(function (point) {
+                            return point.issuedCount;
+                        }),
+                        backgroundColor: "rgba(15, 127, 52, 0.88)",
+                        borderRadius: 12,
+                        borderSkipped: false,
+                        maxBarThickness: 34
+                    },
+                    {
+                        type: "bar",
+                        label: "Returned",
+                        data: series.points.map(function (point) {
+                            return point.returnedCount;
+                        }),
+                        backgroundColor: "rgba(145, 213, 166, 0.96)",
+                        borderRadius: 12,
+                        borderSkipped: false,
+                        maxBarThickness: 34
+                    }
+                ]
+            };
+        }
+
+        function renderChart() {
+            var currentSeries = chartSeries[activeRange] || chartSeries.day;
+            if (!currentSeries) {
+                return;
+            }
+
+            var chartData = buildDataset(currentSeries);
+            updateSummary(currentSeries);
+            syncRangeButtons(activeRange);
+
+            if (chartInstance) {
+                chartInstance.data.labels = chartData.labels;
+                chartInstance.data.datasets[0].data = chartData.datasets[0].data;
+                chartInstance.data.datasets[1].data = chartData.datasets[1].data;
+                chartInstance.update();
+                return;
+            }
+
+            chartInstance = new Chart(chartCanvas, {
+                type: "bar",
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: "index",
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: "rgba(23, 42, 28, 0.96)",
+                            padding: 12,
+                            titleFont: {
+                                family: "Manrope"
+                            },
+                            bodyFont: {
+                                family: "Manrope"
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: "#5d7065",
+                                font: {
+                                    family: "Manrope",
+                                    weight: "700"
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,
+                                color: "#708274",
+                                font: {
+                                    family: "Manrope"
+                                }
+                            },
+                            grid: {
+                                color: "rgba(16, 90, 42, 0.10)",
+                                drawBorder: false
+                            },
+                            border: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        Array.prototype.forEach.call(rangeButtons, function (button) {
+            button.addEventListener("click", function () {
+                activeRange = button.getAttribute("data-reports-circulation-range") || "day";
+                renderChart();
+            });
+        });
+
+        renderChart();
     })();
 </script>
 </body>
 </html>
-
 

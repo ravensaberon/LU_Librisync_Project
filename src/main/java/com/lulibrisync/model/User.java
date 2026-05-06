@@ -23,8 +23,17 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+    @Column(name = "first_name", nullable = false, length = 50)
+    private String firstName = "";
+
+    @Column(name = "middle_name", length = 50)
+    private String middleName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    private String lastName = "";
+
+    @Column(name = "suffix", length = 20)
+    private String suffix;
 
     @Column(nullable = false, unique = true, length = 120)
     private String email;
@@ -75,12 +84,48 @@ public class User {
         this.id = id;
     }
 
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = normalizePart(firstName);
+    }
+
+    public String getMiddleName() {
+        return middleName;
+    }
+
+    public void setMiddleName(String middleName) {
+        this.middleName = normalizeNullablePart(middleName);
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = normalizePart(lastName);
+    }
+
+    public String getSuffix() {
+        return suffix;
+    }
+
+    public void setSuffix(String suffix) {
+        this.suffix = normalizeNullablePart(suffix);
+    }
+
     public String getName() {
-        return name;
+        return buildFullName(firstName, middleName, lastName, suffix);
     }
 
     public void setName(String name) {
-        this.name = name;
+        ParsedName parsedName = parseName(name);
+        this.firstName = parsedName.firstName();
+        this.middleName = parsedName.middleName();
+        this.lastName = parsedName.lastName();
+        this.suffix = parsedName.suffix();
     }
 
     public String getEmail() {
@@ -165,5 +210,84 @@ public class User {
 
     public void setStudent(Student student) {
         this.student = student;
+    }
+
+    private static String buildFullName(String firstName,
+                                        String middleName,
+                                        String lastName,
+                                        String suffix) {
+        StringBuilder fullName = new StringBuilder();
+        appendPart(fullName, firstName);
+        appendPart(fullName, middleName);
+        appendPart(fullName, lastName);
+        appendPart(fullName, suffix);
+        return fullName.toString().trim();
+    }
+
+    private static void appendPart(StringBuilder builder, String value) {
+        String normalized = normalizeNullablePart(value);
+        if (normalized == null) {
+            return;
+        }
+        if (!builder.isEmpty()) {
+            builder.append(' ');
+        }
+        builder.append(normalized);
+    }
+
+    private static String normalizePart(String value) {
+        String normalized = value == null ? "" : value.trim().replaceAll("\\s+", " ");
+        return normalized;
+    }
+
+    private static String normalizeNullablePart(String value) {
+        String normalized = normalizePart(value);
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private static ParsedName parseName(String rawName) {
+        String normalized = normalizePart(rawName);
+        if (normalized.isEmpty()) {
+            return new ParsedName("", null, "", null);
+        }
+
+        String[] tokens = normalized.split("\\s+");
+        if (tokens.length == 1) {
+            return new ParsedName(tokens[0], null, "", null);
+        }
+        if (tokens.length == 2) {
+            return new ParsedName(tokens[0], null, tokens[1], null);
+        }
+
+        String detectedSuffix = null;
+        int lastNameIndex = tokens.length - 1;
+        if (looksLikeSuffix(tokens[tokens.length - 1])) {
+            detectedSuffix = tokens[tokens.length - 1];
+            lastNameIndex = tokens.length - 2;
+        }
+
+        String detectedFirstName = tokens[0];
+        String detectedLastName = lastNameIndex <= 0 ? "" : tokens[lastNameIndex];
+        String detectedMiddleName = lastNameIndex > 1
+                ? String.join(" ", java.util.Arrays.copyOfRange(tokens, 1, lastNameIndex))
+                : null;
+
+        return new ParsedName(
+                detectedFirstName,
+                normalizeNullablePart(detectedMiddleName),
+                normalizePart(detectedLastName),
+                normalizeNullablePart(detectedSuffix)
+        );
+    }
+
+    private static boolean looksLikeSuffix(String token) {
+        if (token == null) {
+            return false;
+        }
+        String normalized = token.trim().replace(".", "").toUpperCase();
+        return normalized.matches("JR|SR|I|II|III|IV|V|VI|PHD|MD|RN|CPA|ESQ");
+    }
+
+    private record ParsedName(String firstName, String middleName, String lastName, String suffix) {
     }
 }

@@ -307,8 +307,20 @@
                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label" for="name">Full name</label>
-                            <input class="form-control" id="name" name="name" value="${profileForm.name}" required>
+                            <label class="form-label" for="firstName">First name</label>
+                            <input class="form-control" id="firstName" name="firstName" value="${profileForm.firstName}" autocapitalize="words" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="middleName">Middle name</label>
+                            <input class="form-control" id="middleName" name="middleName" value="${profileForm.middleName}" autocapitalize="words">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="lastName">Last name</label>
+                            <input class="form-control" id="lastName" name="lastName" value="${profileForm.lastName}" autocapitalize="words" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label" for="suffix">Suffix</label>
+                            <input class="form-control" id="suffix" name="suffix" value="${profileForm.suffix}" autocapitalize="characters">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label" for="studentIdDisplay">Student ID</label>
@@ -424,9 +436,7 @@
                         <div>
                             <strong>${empty otpMaskedEmail ? 'Registered email' : otpMaskedEmail}</strong>
                             <div class="small muted-text">
-                                Expires in <strong id="modalOtpExpiryCountdown">calculating...</strong>
-                                <span class="mx-1">|</span>
-                                Resend in <strong id="modalOtpResendCountdown">calculating...</strong>
+                                Resend OTP in <strong id="modalOtpResendCountdown">calculating...</strong>
                             </div>
                         </div>
                     </div>
@@ -473,6 +483,65 @@
         var profileCityMunicipality = document.getElementById("profileCityMunicipality");
         var profileBarangay = document.getElementById("profileBarangay");
         var profileZipcode = document.getElementById("profileZipcode");
+        var profileStreet = document.getElementById("profileStreet");
+        var profileNameFields = [
+            document.getElementById("firstName"),
+            document.getElementById("middleName"),
+            document.getElementById("lastName"),
+            document.getElementById("suffix")
+        ];
+
+        function toWordCase(value) {
+            return (value || "")
+                .replace(/\s+/g, " ")
+                .replace(/(^|\s|[-'])(([a-z]))/g, function (match, prefix, letterGroup, letter) {
+                    return prefix + letter.toUpperCase();
+                });
+        }
+
+        function toAddressCase(value) {
+            return (value || "")
+                .replace(/\s+/g, " ")
+                .replace(/(^|\s|[-/'])(([a-z]))/g, function (match, prefix, letterGroup, letter) {
+                    return prefix + letter.toUpperCase();
+                });
+        }
+
+        function applyNameCase(input) {
+            if (!input) {
+                return;
+            }
+
+            var selectionStart = input.selectionStart;
+            var selectionEnd = input.selectionEnd;
+            var formattedValue = toWordCase(input.value);
+            if (formattedValue === input.value) {
+                return;
+            }
+
+            input.value = formattedValue;
+            if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
+                input.setSelectionRange(selectionStart, selectionEnd);
+            }
+        }
+
+        function applyFormattedCase(input, formatter) {
+            if (!input || typeof formatter !== "function") {
+                return;
+            }
+
+            var selectionStart = input.selectionStart;
+            var selectionEnd = input.selectionEnd;
+            var formattedValue = formatter(input.value);
+            if (formattedValue === input.value) {
+                return;
+            }
+
+            input.value = formattedValue;
+            if (typeof selectionStart === "number" && typeof selectionEnd === "number") {
+                input.setSelectionRange(selectionStart, selectionEnd);
+            }
+        }
 
         function formatCountdown(targetEpochMs) {
             if (!targetEpochMs) {
@@ -491,14 +560,7 @@
         }
 
         function updateOtpCountdowns() {
-            var expiryTargets = document.querySelectorAll("#profileOtpExpiryCountdown, #modalOtpExpiryCountdown");
             var resendTargets = document.querySelectorAll("#profileOtpResendCountdown, #modalOtpResendCountdown");
-
-            expiryTargets.forEach(function (element) {
-                if (element) {
-                    element.textContent = formatCountdown(otpExpiresAtEpochMs);
-                }
-            });
 
             var resendCountdown = formatCountdown(otpResendAvailableAtEpochMs);
             resendTargets.forEach(function (element) {
@@ -544,6 +606,30 @@
                     "${entry.key}": "${entry.value}"<c:if test="${!status.last}">,</c:if>
                     </c:forEach>
                 }
+            });
+        }
+
+        profileNameFields.forEach(function (input) {
+            if (!input) {
+                return;
+            }
+
+            applyFormattedCase(input, toWordCase);
+            input.addEventListener("input", function () {
+                applyFormattedCase(input, toWordCase);
+            });
+            input.addEventListener("blur", function () {
+                applyFormattedCase(input, toWordCase);
+            });
+        });
+
+        if (profileStreet) {
+            applyFormattedCase(profileStreet, toAddressCase);
+            profileStreet.addEventListener("input", function () {
+                applyFormattedCase(profileStreet, toAddressCase);
+            });
+            profileStreet.addEventListener("blur", function () {
+                applyFormattedCase(profileStreet, toAddressCase);
             });
         }
 

@@ -69,10 +69,19 @@
         </div>
     </section>
 
-    <section class="panel-card">
-        <div class="section-title">Queue reservations</div>
+    <section class="panel-card" data-table-search-section data-table-search-empty="No reservation rows matched your search on this page.">
+        <div class="table-search-header">
+            <div>
+                <div class="section-title mb-1">Queue reservations</div>
+                <div class="table-search-meta" data-table-search-count></div>
+            </div>
+            <label class="table-search-shell" aria-label="Search queue reservations">
+                <i class="bi bi-search"></i>
+                <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+            </label>
+        </div>
         <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table align-middle" data-table-search-table>
                 <thead>
                 <tr>
                     <th>Book</th>
@@ -101,7 +110,7 @@
                                         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                                         <input type="hidden" name="queuePage" value="${queueReservationsPage.page}">
                                         <input class="form-control form-control-sm" name="remarks" placeholder="Optional remarks">
-                                        <button class="btn btn-brand" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Confirm pickup and issue</button>
+                                        <button class="btn btn-brand" type="submit"><i class="bi bi-box-arrow-right me-2"></i>Confirm Pickup</button>
                                         <span class="muted-text small">Due date is set automatically using the circulation policy.</span>
                                     </form>
                                 </c:when>
@@ -170,21 +179,38 @@
                             <div class="form-note mt-2">Due date is assigned automatically when the pickup is confirmed.</div>
                         </div>
                     </form>
-                    <div class="scanner-shell">
-                        <video id="reservationScannerVideo" autoplay muted playsinline></video>
-                        <div class="scanner-overlay"></div>
-                        <div class="scanner-target scanner-target-qr"></div>
+                    <div id="reservationScannerView">
+                        <div class="scanner-shell">
+                            <video id="reservationScannerVideo" autoplay muted playsinline></video>
+                            <div class="scanner-overlay"></div>
+                            <div class="scanner-target scanner-target-qr"></div>
+                        </div>
+                        <div class="scanner-status" id="reservationScannerStatus">
+                            Camera scanner is preparing. Hold the student pickup QR inside the highlighted frame.
+                        </div>
+                        <div class="scanner-upload">
+                            <div class="scanner-upload-actions">
+                                <label class="btn btn-warm mb-0" for="reservationScannerUpload">
+                                    <i class="bi bi-image me-2"></i>Upload QR from gallery
+                                </label>
+                                <input class="d-none" id="reservationScannerUpload" type="file" accept="image/*">
+                                <span class="form-note">You can also choose a saved screenshot of the student's QR code.</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="scanner-status" id="reservationScannerStatus">
-                        Camera scanner is preparing. Hold the student pickup QR inside the highlighted frame.
-                    </div>
-                    <div class="scanner-upload">
-                        <div class="scanner-upload-actions">
-                            <label class="btn btn-warm mb-0" for="reservationScannerUpload">
-                                <i class="bi bi-image me-2"></i>Upload QR from gallery
-                            </label>
-                            <input class="d-none" id="reservationScannerUpload" type="file" accept="image/*">
-                            <span class="form-note">You can also choose a saved screenshot of the student's QR code.</span>
+                    <div id="reservationScannerPreview" hidden>
+                        <div class="support-item mb-3">
+                            <strong>QR code detected</strong>
+                            <span id="reservationPreviewCode" class="d-block mt-1" style="font-family:monospace;font-size:.9rem;word-break:break-all;color:var(--primary-900)"></span>
+                        </div>
+                        <p class="muted-text mb-3">Review the code above. Click <strong>Confirm pickup and issue</strong> to complete the desk release, or <strong>Re-scan</strong> to try again.</p>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-brand" type="submit" form="reservationQrClaimForm" id="reservationPreviewConfirmBtn">
+                                <i class="bi bi-box-arrow-right me-2"></i>Confirm pickup and issue
+                            </button>
+                            <button class="btn btn-warm" type="button" id="reservationPreviewRescanBtn">
+                                <i class="bi bi-arrow-repeat me-2"></i>Re-scan
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -203,6 +229,11 @@
         const scannerUploadInput = document.getElementById("reservationScannerUpload");
         const qrCodeField = document.getElementById("reservationQrCodeField");
         const claimForm = document.getElementById("reservationQrClaimForm");
+        const scannerView = document.getElementById("reservationScannerView");
+        const scannerPreview = document.getElementById("reservationScannerPreview");
+        const previewCode = document.getElementById("reservationPreviewCode");
+        const previewConfirmBtn = document.getElementById("reservationPreviewConfirmBtn");
+        const previewRescanBtn = document.getElementById("reservationPreviewRescanBtn");
         const scanner = window.LuLibrisyncQr.createScanner({
             videoElement: document.getElementById("reservationScannerVideo"),
             statusElement: document.getElementById("reservationScannerStatus"),
@@ -211,8 +242,8 @@
             qrFallbackMessage: "QR-only scanning is active on this browser. Aim the camera at the student's reservation QR.",
             unsupportedMessage: "This browser cannot decode live QR codes. You can still upload a saved QR image.",
             permissionMessage: "Camera access was blocked or unavailable. Please allow camera use, then try again.",
-            fileSuccessMessage: "QR image decoded successfully. Recording the desk release now.",
-            onDetected: submitClaimFromQr,
+            fileSuccessMessage: "QR image decoded. Review the details below.",
+            onDetected: showReservationScanPreview,
             onScanError: function () {
                 window.LuLibrisyncQr.setStatus(
                     document.getElementById("reservationScannerStatus"),
@@ -222,19 +253,34 @@
             }
         });
 
-        function submitClaimFromQr(rawValue) {
+        function showReservationScanPreview(rawValue) {
             const detectedCode = (rawValue || "").trim();
             if (!detectedCode) {
                 return;
             }
 
-            qrCodeField.value = detectedCode;
-            scanner.setStatus("Reservation QR detected. Recording the pickup and issuing the book now.", false);
             scanner.stop();
-            claimForm.requestSubmit();
+            qrCodeField.value = detectedCode;
+            previewCode.textContent = detectedCode;
+            scannerView.hidden = true;
+            scannerPreview.hidden = false;
         }
 
+        function resetReservationScanner() {
+            qrCodeField.value = "";
+            previewCode.textContent = "";
+            scannerPreview.hidden = true;
+            scannerView.hidden = false;
+            scanner.start();
+        }
+
+        previewRescanBtn.addEventListener("click", function () {
+            resetReservationScanner();
+        });
+
         scannerModalElement.addEventListener("shown.bs.modal", function () {
+            scannerPreview.hidden = true;
+            scannerView.hidden = false;
             scanner.start();
         });
 
@@ -243,6 +289,9 @@
             scanner.setStatus("Camera scanner is preparing. Hold the student pickup QR inside the highlighted frame.", false);
             scannerUploadInput.value = "";
             qrCodeField.value = "";
+            previewCode.textContent = "";
+            scannerPreview.hidden = true;
+            scannerView.hidden = false;
         });
 
         scannerUploadInput.addEventListener("change", function (event) {

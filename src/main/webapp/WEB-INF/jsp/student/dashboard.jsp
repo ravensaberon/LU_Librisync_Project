@@ -74,7 +74,7 @@
             </div>
         </section>
 
-        <section class="stat-grid mb-4">
+        <section class="stat-grid student-dashboard-stat-grid mb-4">
             <div class="metric-card">
                 <div class="metric-value">${activeCount}</div>
                 <div class="metric-label">Currently borrowed</div>

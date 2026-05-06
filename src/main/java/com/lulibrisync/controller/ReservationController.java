@@ -8,6 +8,7 @@ import com.lulibrisync.util.PaginationUtils;
 import com.lulibrisync.model.Reservation;
 import com.lulibrisync.model.ReservationStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -143,22 +144,18 @@ public class ReservationController {
 
     @PostMapping("/admin/reservations/{reservationId}/approve")
     public String approveBorrowRequest(@PathVariable Long reservationId,
+                                       @RequestParam(required = false) String remarks,
                                        @RequestParam(defaultValue = "1") Integer borrowPage,
                                        @RequestParam(defaultValue = "1") Integer queuePage,
                                        @RequestParam(defaultValue = "reservations") String source,
                                        Authentication authentication,
                                        RedirectAttributes redirectAttributes) {
         try {
-            reservationService.approveBorrowRequest(reservationId);
-            auditLogService.log(
-                    authentication.getName(),
-                    "BORROW_REQUEST_APPROVED",
-                    "RESERVATION",
-                    reservationId.toString(),
-                    "Borrow request approved by admin",
-                    "Admin approved borrow request " + reservationId + "."
-            );
-            redirectAttributes.addFlashAttribute("success", "Borrow request approved. Student has been notified.");
+            Reservation reservation = reservationService.getReservationById(reservationId);
+            if (!reservation.isBorrowRequest()) {
+                throw new IllegalArgumentException("Only borrow requests can be approved from Issue / Return.");
+            }
+            claimReservationForPickup(reservation, remarks, authentication, redirectAttributes);
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         }
@@ -223,6 +220,18 @@ public class ReservationController {
         return buildAdminReservationRedirect(source, borrowPage, queuePage);
     }
 
+    @GetMapping("/admin/reservations/claim-by-qr")
+    public String claimReservationByQrFallback(@RequestParam(required = false) String qrCode,
+                                               @RequestParam(required = false) String remarks,
+                                               @RequestParam(defaultValue = "1") Integer borrowPage,
+                                               @RequestParam(defaultValue = "1") Integer queuePage,
+                                               @RequestParam(defaultValue = "reservations") String source,
+                                               Authentication authentication,
+                                               RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute("error", "The QR claim form did not submit correctly. Please scan the student's QR again, then press Confirm and issue.");
+        return buildAdminReservationRedirect(source, borrowPage, queuePage);
+    }
+
     @PostMapping("/admin/reservations/{reservationId}/cancel")
     public String cancelAdminReservation(@PathVariable Long reservationId,
                                          @RequestParam(defaultValue = "1") Integer borrowPage,
@@ -262,29 +271,7 @@ public class ReservationController {
             throw new IllegalArgumentException("Reservation not found.");
         }
 
-        // If still pending approval, auto-approve first (QR scan = student is physically present)
-        if (ReservationStatus.PENDING_APPROVAL.equals(reservation.getStatus())) {
-            reservationService.approveBorrowRequest(reservation.getId());
-            reservation = reservationService.getReservationById(reservation.getId());
-        }
-
-        if (!ReservationStatus.READY.equals(reservation.getStatus())) {
-            if (ReservationStatus.PENDING.equals(reservation.getStatus())) {
-                throw new IllegalArgumentException("This reservation is not ready for desk release yet.");
-            }
-            if (ReservationStatus.CLAIMED.equals(reservation.getStatus())) {
-                throw new IllegalArgumentException("This reservation QR code was already processed.");
-            }
-            throw new IllegalArgumentException("This reservation is no longer active.");
-        }
-
-        var issueRecord = issueService.issueBook(
-                reservation.getBook().getId(),
-                reservation.getStudent().getId(),
-                LocalDate.now().plusDays(circulationPolicyService.getMaxLoanDays()),
-                authentication.getName(),
-                remarks
-        );
+        var issueRecord = issueService.issueReservationPickup(reservation.getId(), authentication.getName(), remarks);
         auditLogService.log(
                 authentication.getName(),
                 "RESERVATION_CLAIMED",

@@ -122,6 +122,8 @@ public class AuthController {
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().body(buildRegistrationOtpErrorResponse(email, session, exception.getMessage()));
+        } catch (IllegalStateException exception) {
+            return ResponseEntity.status(503).body(buildRegistrationOtpErrorResponse(email, session, exception.getMessage()));
         }
     }
 
@@ -273,6 +275,8 @@ public class AuthController {
             redirectAttributes.addFlashAttribute("success", "A new verification code has been sent to your email.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
         }
         return "redirect:/register/verify?email=" + encodeEmail(email);
     }
@@ -296,6 +300,10 @@ public class AuthController {
             redirectAttributes.addFlashAttribute("emailValue", email);
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
             return "redirect:/forgot-password";
+        } catch (IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("emailValue", email);
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+            return "redirect:/forgot-password";
         }
     }
 
@@ -315,6 +323,11 @@ public class AuthController {
             }
             return "redirect:/forgot-password?email=" + dispatchResult.getOtpState().getEmail();
         } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("emailValue", email);
+            redirectAttributes.addFlashAttribute("openResetPanel", true);
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+            return "redirect:/forgot-password";
+        } catch (IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("emailValue", email);
             redirectAttributes.addFlashAttribute("openResetPanel", true);
             redirectAttributes.addFlashAttribute("error", exception.getMessage());

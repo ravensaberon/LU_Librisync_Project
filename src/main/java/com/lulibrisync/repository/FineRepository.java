@@ -20,6 +20,8 @@ public interface FineRepository extends JpaRepository<Fine, Long> {
 
     List<Fine> findByStudent_IdOrderByCalculatedAtDesc(Long studentId);
 
+    List<Fine> findByStatusOrderByCalculatedAtDesc(FineStatus status);
+
     List<Fine> findTop12ByStatusOrderByCalculatedAtDesc(FineStatus status);
 
     long countByStatus(FineStatus status);

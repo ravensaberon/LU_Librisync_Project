@@ -330,7 +330,7 @@
                 </div>
             </div>
 
-            <form id="registerForm" method="post" action="${pageContext.request.contextPath}/register" novalidate>
+            <form id="registerForm" method="post" action="${pageContext.request.contextPath}/register" novalidate autocomplete="off">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
 
                 <section class="register-step-panel" data-step-panel="0">
@@ -478,9 +478,9 @@
                             <p class="field-error" id="barangayError"></p>
                         </div>
                         <div class="register-block">
-                            <label class="form-label" for="street">Street / House No.</label>
-                            <input class="form-control form-control-lg" id="street" name="street" type="text" value="${streetValue}" maxlength="180" autocomplete="address-line1" required>
-                            <p class="field-hint">Include house number, street, or subdivision if needed.</p>
+                            <label class="form-label" for="street">Street / House No. <span class="text-muted" style="font-weight:400;font-size:0.85em;">(optional)</span></label>
+                            <input class="form-control form-control-lg" id="street" name="street" type="text" value="${streetValue}" maxlength="180" autocomplete="address-line1">
+                            <p class="field-hint">House number, street, or subdivision. Leave blank if not applicable.</p>
                             <p class="field-error" id="streetError"></p>
                         </div>
                     </div>
@@ -532,7 +532,6 @@
 
                         <div class="otp-status-line" id="otpStatusLine">
                             <span id="otpMaskedEmailLabel">No verification code sent yet.</span>
-                            <span id="otpExpiryLabel" hidden>Expires in <strong id="otpExpiryCountdown">--:--</strong></span>
                             <span id="otpResendLabel" hidden>Resend in <strong id="otpResendCountdown">--:--</strong></span>
                         </div>
 
@@ -630,9 +629,7 @@
         var otpVerifiedBadge = document.getElementById("otpVerifiedBadge");
         var otpDescription = document.getElementById("otpDescription");
         var otpMaskedEmailLabel = document.getElementById("otpMaskedEmailLabel");
-        var otpExpiryLabel = document.getElementById("otpExpiryLabel");
         var otpResendLabel = document.getElementById("otpResendLabel");
-        var otpExpiryCountdown = document.getElementById("otpExpiryCountdown");
         var otpResendCountdown = document.getElementById("otpResendCountdown");
         var registerSubmitNote = document.getElementById("registerSubmitNote");
         var initialBarangay = barangay.dataset.selectedBarangay || "";
@@ -767,9 +764,7 @@
                 otpMaskedEmailLabel.textContent = "No verification code sent yet.";
             }
 
-            otpExpiryLabel.hidden = !(otpState.hasPendingOtp && !otpState.verified);
             otpResendLabel.hidden = !(otpState.hasPendingOtp && !otpState.verified);
-            otpExpiryCountdown.textContent = formatCountdown(otpState.expiresAtEpochMs);
             otpResendCountdown.textContent = formatCountdown(otpState.resendAvailableAtEpochMs);
 
             var finalStepValid = canSubmitCurrentFinalStep();
@@ -786,7 +781,7 @@
 
         function saveDraftObject(draft) {
             try {
-                localStorage.setItem(storageKey, JSON.stringify(draft));
+                sessionStorage.setItem(storageKey, JSON.stringify(draft));
             } catch (ignored) {
                 // Ignore storage failures.
             }
@@ -794,7 +789,7 @@
 
         function readDraftObject() {
             try {
-                var raw = localStorage.getItem(storageKey);
+                var raw = sessionStorage.getItem(storageKey);
                 return raw ? JSON.parse(raw) : null;
             } catch (ignored) {
                 return null;
@@ -822,7 +817,7 @@
 
         function clearDraft() {
             try {
-                localStorage.removeItem(storageKey);
+                sessionStorage.removeItem(storageKey);
             } catch (ignored) {
                 // Ignore storage failures.
             }
@@ -973,11 +968,7 @@
 
         function validateStreet() {
             street.value = (street.value || "").trim().replace(/\s+/g, " ");
-            if (!street.value) {
-                setFieldMessage(street, errors.street, "Street is required.");
-                return false;
-            }
-            if (street.value.length < 2) {
+            if (street.value && street.value.length < 2) {
                 setFieldMessage(street, errors.street, "Street must be at least 2 characters.");
                 return false;
             }

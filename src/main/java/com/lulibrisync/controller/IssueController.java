@@ -109,6 +109,97 @@ public class IssueController {
         return "redirect:/admin/issues";
     }
 
+    @PostMapping("/admin/issues/borrow-requests/{reservationId}/approve")
+    public String approveBorrowRequestAndIssue(@PathVariable Long reservationId,
+                                               @RequestParam(required = false) String remarks,
+                                               @RequestParam(defaultValue = "1") Integer activePage,
+                                               @RequestParam(defaultValue = "1") Integer historyPage,
+                                               @RequestParam(defaultValue = "1") Integer borrowPage,
+                                               Authentication authentication,
+                                               RedirectAttributes redirectAttributes) {
+        try {
+            var reservation = reservationService.getReservationById(reservationId);
+            if (!reservation.isBorrowRequest()) {
+                throw new IllegalArgumentException("Only borrow requests can be approved from Issue / Return.");
+            }
+            var issueRecord = issueService.issueReservationPickup(reservationId, authentication.getName(), remarks);
+            auditLogService.log(
+                    authentication.getName(),
+                    "BORROW_REQUEST_APPROVED",
+                    "RESERVATION",
+                    reservationId.toString(),
+                    "Borrow request approved and issued",
+                    "Issue code: " + issueRecord.getQrIssueCode() + " | Borrower: " + issueRecord.getStudent().getStudentId()
+            );
+            redirectAttributes.addFlashAttribute("success", "Borrow request approved and issued successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return buildBorrowRequestRedirect(activePage, historyPage, borrowPage);
+    }
+
+    @PostMapping("/admin/issues/borrow-requests/{reservationId}/deny")
+    public String denyBorrowRequest(@PathVariable Long reservationId,
+                                    @RequestParam(defaultValue = "1") Integer activePage,
+                                    @RequestParam(defaultValue = "1") Integer historyPage,
+                                    @RequestParam(defaultValue = "1") Integer borrowPage,
+                                    Authentication authentication,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            reservationService.denyBorrowRequest(reservationId);
+            auditLogService.log(
+                    authentication.getName(),
+                    "BORROW_REQUEST_DENIED",
+                    "RESERVATION",
+                    reservationId.toString(),
+                    "Borrow request denied by admin",
+                    "Admin denied borrow request " + reservationId + "."
+            );
+            redirectAttributes.addFlashAttribute("success", "Borrow request denied. Student has been notified.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return buildBorrowRequestRedirect(activePage, historyPage, borrowPage);
+    }
+
+    @PostMapping("/admin/issues/borrow-requests/claim-by-qr")
+    public String claimBorrowRequestByQr(@RequestParam String qrCode,
+                                         @RequestParam(required = false) String remarks,
+                                         @RequestParam(defaultValue = "1") Integer activePage,
+                                         @RequestParam(defaultValue = "1") Integer historyPage,
+                                         @RequestParam(defaultValue = "1") Integer borrowPage,
+                                         Authentication authentication,
+                                         RedirectAttributes redirectAttributes) {
+        try {
+            var reservation = reservationService.getReservationByDeskQrCode(qrCode);
+            if (!reservation.isBorrowRequest()) {
+                throw new IllegalArgumentException("This QR belongs to a reservation queue pickup. Please claim it from Reservations.");
+            }
+            var issueRecord = issueService.issueReservationPickup(reservation.getId(), authentication.getName(), remarks);
+            auditLogService.log(
+                    authentication.getName(),
+                    "BORROW_REQUEST_APPROVED",
+                    "RESERVATION",
+                    reservation.getId().toString(),
+                    "Borrow request approved and issued by QR",
+                    "Issue code: " + issueRecord.getQrIssueCode() + " | Borrower: " + issueRecord.getStudent().getStudentId()
+            );
+            redirectAttributes.addFlashAttribute("success", "Borrow request QR confirmed and issued successfully.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return buildBorrowRequestRedirect(activePage, historyPage, borrowPage);
+    }
+
+    @GetMapping("/admin/issues/borrow-requests/claim-by-qr")
+    public String claimBorrowRequestByQrFallback(@RequestParam(defaultValue = "1") Integer activePage,
+                                                 @RequestParam(defaultValue = "1") Integer historyPage,
+                                                 @RequestParam(defaultValue = "1") Integer borrowPage,
+                                                 RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute("error", "The QR claim form did not submit correctly. Please scan the student's QR again, then press Confirm and issue.");
+        return buildBorrowRequestRedirect(activePage, historyPage, borrowPage);
+    }
+
     @PostMapping("/admin/issues/{issueId}/update")
     public String updateIssue(@PathVariable Long issueId,
                               @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dueDate,
@@ -235,6 +326,13 @@ public class IssueController {
             redirect.append("&editId=").append(editId);
         }
         return redirect.toString();
+    }
+
+    private String buildBorrowRequestRedirect(Integer activePage, Integer historyPage, Integer borrowPage) {
+        return "redirect:/admin/issues?activePage=" + (activePage == null ? 1 : Math.max(1, activePage))
+                + "&historyPage=" + (historyPage == null ? 1 : Math.max(1, historyPage))
+                + "&borrowPage=" + (borrowPage == null ? 1 : Math.max(1, borrowPage))
+                + "#borrow-requests";
     }
 
     private String resolveStudentRedirect(String redirectTo) {

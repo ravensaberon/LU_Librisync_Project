@@ -7,6 +7,7 @@ import com.lulibrisync.model.IssueStatus;
 import com.lulibrisync.model.Reservation;
 import com.lulibrisync.model.ReservationStatus;
 import com.lulibrisync.service.AdminReportingService;
+import com.lulibrisync.service.IssueService;
 import com.lulibrisync.util.PaginationUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ContentDisposition;
@@ -38,9 +39,12 @@ public class ReportController {
     private static final int AUDIT_AND_FINE_PAGE_SIZE = 6;
 
     private final AdminReportingService adminReportingService;
+    private final IssueService issueService;
 
-    public ReportController(AdminReportingService adminReportingService) {
+    public ReportController(AdminReportingService adminReportingService,
+                            IssueService issueService) {
         this.adminReportingService = adminReportingService;
+        this.issueService = issueService;
     }
 
     @GetMapping
@@ -128,6 +132,7 @@ public class ReportController {
         model.addAttribute("auditRecordCount", auditRecords.size());
         model.addAttribute("topBorrowers", topBorrowers);
         model.addAttribute("topTitles", topTitles);
+        model.addAttribute("circulationChartSeries", issueService.getCirculationChartSeries());
         return "admin/reports";
     }
 

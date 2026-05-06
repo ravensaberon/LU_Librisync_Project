@@ -156,6 +156,22 @@ public class Reservation {
         return expiresAt == null ? "" : DISPLAY_DATE_TIME_FORMATTER.format(expiresAt);
     }
 
+    /**
+     * Returns the effective claim deadline for display:
+     * - If expiresAt is set (READY status), use it directly.
+     * - If pending approval (expiresAt not yet set), estimate as reservedAt + 24 h
+     *   so the desk can see the latest time the student is expected to show up.
+     */
+    public String getClaimDeadlineDisplay() {
+        if (expiresAt != null) {
+            return DISPLAY_DATE_TIME_FORMATTER.format(expiresAt);
+        }
+        if (reservedAt != null) {
+            return DISPLAY_DATE_TIME_FORMATTER.format(reservedAt.plusHours(24));
+        }
+        return "";
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }

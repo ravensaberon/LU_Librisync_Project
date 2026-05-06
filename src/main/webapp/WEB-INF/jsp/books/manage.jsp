@@ -58,10 +58,10 @@
                 </p>
             </div>
             <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-light" type="button" data-bs-toggle="modal" data-bs-target="#bookFormModal">
+                <button class="btn hero-action-button hero-action-button-brand" type="button" data-bs-toggle="modal" data-bs-target="#bookFormModal">
                     <i class="bi bi-journal-plus me-2"></i>Add book to the library
                 </button>
-                <button class="btn btn-warm" type="button" data-bs-toggle="modal" data-bs-target="#archivedBooksModal">
+                <button class="btn hero-action-button hero-action-button-soft" type="button" data-bs-toggle="modal" data-bs-target="#archivedBooksModal">
                     <i class="bi bi-archive me-2"></i>Archived books
                     <c:if test="${archivedBookCount > 0}">
                         <span class="badge bg-secondary ms-1">${archivedBookCount}</span>
@@ -71,7 +71,7 @@
         </div>
     </section>
 
-    <section class="stat-grid mb-4">
+    <section class="stat-grid books-stat-grid mb-4">
         <div class="metric-card">
             <div class="metric-value">${bookCount}</div>
             <div class="metric-label">Catalog titles</div>
@@ -98,10 +98,19 @@
         </div>
     </section>
 
-    <section class="panel-card">
-        <div class="section-title">Current inventory</div>
+    <section class="panel-card" data-table-search-section data-table-search-empty="No inventory rows matched your search on this page.">
+        <div class="table-search-header">
+            <div>
+                <div class="section-title mb-1">Current inventory</div>
+                <div class="table-search-meta" data-table-search-count></div>
+            </div>
+            <label class="table-search-shell" aria-label="Search current inventory">
+                <i class="bi bi-search"></i>
+                <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+            </label>
+        </div>
         <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table align-middle" data-table-search-table>
                 <thead>
                 <tr>
                     <th>Title</th>
@@ -541,7 +550,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="categoryId">Category</label>
-                            <select class="form-select" id="categoryId" name="categoryId">
+                            <select class="form-select" id="categoryId" name="categoryId" data-searchable>
                                 <option value="">Select category</option>
                                 <c:forEach items="${categories}" var="category">
                                     <option value="${category.id}" <c:if test="${not empty editBook and not empty editBook.category and editBook.category.id == category.id}">selected</c:if>>
@@ -552,7 +561,7 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label" for="authorId">Author</label>
-                            <select class="form-select" id="authorId" name="authorId">
+                            <select class="form-select" id="authorId" name="authorId" data-searchable>
                                 <option value="">Select author</option>
                                 <c:forEach items="${authors}" var="author">
                                     <option value="${author.id}" <c:if test="${not empty editBook and not empty editBook.author and editBook.author.id == author.id}">selected</c:if>>
@@ -960,6 +969,212 @@
                     }
                 });
             }
+        });
+    })();
+</script>
+<script>
+    // Searchable select — enhances any <select data-searchable> into a type-to-filter combobox
+    (function () {
+        var style = document.createElement("style");
+        style.textContent = [
+            ".searchable-wrap{position:relative;}",
+            ".searchable-input{width:100%;padding:.375rem 2rem .375rem .75rem;border:1px solid #dee2e6;border-radius:.375rem;font-size:1rem;line-height:1.5;background:#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3E%3C/svg%3E\") no-repeat right .75rem center/16px 12px;appearance:none;cursor:pointer;}",
+            ".searchable-input:focus{outline:0;border-color:#86b7fe;box-shadow:0 0 0 .25rem rgba(13,110,253,.25);}",
+            ".searchable-dropdown{position:absolute;top:100%;left:0;right:0;z-index:1055;background:#fff;border:1px solid #dee2e6;border-top:none;border-radius:0 0 .375rem .375rem;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1);display:none;}",
+            ".searchable-dropdown.open{display:block;}",
+            ".searchable-option{padding:.45rem .75rem;cursor:pointer;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
+            ".searchable-option:hover,.searchable-option.focused{background:#f0f7f2;color:#0f7f34;}",
+            ".searchable-option.selected{font-weight:700;color:#0f7f34;}",
+            ".searchable-option.hidden{display:none;}",
+            ".searchable-no-results{padding:.45rem .75rem;color:#6c757d;font-size:.9rem;font-style:italic;}"
+        ].join("");
+        document.head.appendChild(style);
+
+        function initSearchableSelect(select) {
+            var wrap = document.createElement("div");
+            wrap.className = "searchable-wrap";
+            select.parentNode.insertBefore(wrap, select);
+            wrap.appendChild(select);
+            select.style.display = "none";
+
+            var input = document.createElement("input");
+            input.type = "text";
+            input.className = "searchable-input";
+            input.setAttribute("autocomplete", "off");
+            input.setAttribute("spellcheck", "false");
+            input.setAttribute("aria-haspopup", "listbox");
+            input.setAttribute("aria-expanded", "false");
+            input.setAttribute("role", "combobox");
+            wrap.insertBefore(input, select);
+
+            var dropdown = document.createElement("div");
+            dropdown.className = "searchable-dropdown";
+            dropdown.setAttribute("role", "listbox");
+            wrap.appendChild(dropdown);
+
+            var options = [];
+            var focusedIndex = -1;
+
+            // Build option list from the original select
+            function buildOptions() {
+                options = [];
+                dropdown.innerHTML = "";
+                var selectOptions = select.options;
+                for (var i = 0; i < selectOptions.length; i++) {
+                    var opt = selectOptions[i];
+                    if (!opt.value) continue; // skip placeholder
+                    var div = document.createElement("div");
+                    div.className = "searchable-option";
+                    div.textContent = opt.text.trim();
+                    div.dataset.value = opt.value;
+                    div.setAttribute("role", "option");
+                    options.push({ el: div, text: opt.text.trim().toLowerCase(), value: opt.value });
+                    dropdown.appendChild(div);
+                }
+            }
+
+            function getSelectedText() {
+                var sel = select.options[select.selectedIndex];
+                return sel && sel.value ? sel.text.trim() : "";
+            }
+
+            function syncInputToSelect() {
+                input.value = getSelectedText();
+                markSelected();
+            }
+
+            function markSelected() {
+                options.forEach(function (o) {
+                    o.el.classList.toggle("selected", o.value === select.value);
+                });
+            }
+
+            function openDropdown() {
+                buildOptions();
+                filterOptions(input.value);
+                dropdown.classList.add("open");
+                input.setAttribute("aria-expanded", "true");
+                focusedIndex = -1;
+                scrollToSelected();
+            }
+
+            function closeDropdown() {
+                dropdown.classList.remove("open");
+                input.setAttribute("aria-expanded", "false");
+                focusedIndex = -1;
+                syncInputToSelect();
+            }
+
+            function scrollToSelected() {
+                var sel = dropdown.querySelector(".selected:not(.hidden)");
+                if (sel) sel.scrollIntoView({ block: "nearest" });
+            }
+
+            function filterOptions(query) {
+                var q = (query || "").toLowerCase().trim();
+                var visibleCount = 0;
+                focusedIndex = -1;
+                options.forEach(function (o) {
+                    var match = !q || o.text.indexOf(q) !== -1;
+                    o.el.classList.toggle("hidden", !match);
+                    if (match) visibleCount++;
+                });
+                var noResults = dropdown.querySelector(".searchable-no-results");
+                if (visibleCount === 0) {
+                    if (!noResults) {
+                        noResults = document.createElement("div");
+                        noResults.className = "searchable-no-results";
+                        noResults.textContent = "No results found.";
+                        dropdown.appendChild(noResults);
+                    }
+                    noResults.style.display = "";
+                } else if (noResults) {
+                    noResults.style.display = "none";
+                }
+            }
+
+            function selectOption(value, text) {
+                select.value = value;
+                input.value = text;
+                closeDropdown();
+                select.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            function moveFocus(dir) {
+                var visible = options.filter(function (o) { return !o.el.classList.contains("hidden"); });
+                if (!visible.length) return;
+                options.forEach(function (o) { o.el.classList.remove("focused"); });
+                focusedIndex = Math.max(0, Math.min(visible.length - 1, focusedIndex + dir));
+                visible[focusedIndex].el.classList.add("focused");
+                visible[focusedIndex].el.scrollIntoView({ block: "nearest" });
+            }
+
+            // Events
+            input.addEventListener("click", function () {
+                if (dropdown.classList.contains("open")) {
+                    closeDropdown();
+                } else {
+                    input.select();
+                    openDropdown();
+                }
+            });
+
+            input.addEventListener("input", function () {
+                if (!dropdown.classList.contains("open")) {
+                    dropdown.classList.add("open");
+                    input.setAttribute("aria-expanded", "true");
+                }
+                filterOptions(input.value);
+            });
+
+            input.addEventListener("keydown", function (e) {
+                if (e.key === "ArrowDown") { e.preventDefault(); if (!dropdown.classList.contains("open")) openDropdown(); moveFocus(1); }
+                else if (e.key === "ArrowUp") { e.preventDefault(); moveFocus(-1); }
+                else if (e.key === "Enter") {
+                    e.preventDefault();
+                    var focused = dropdown.querySelector(".focused");
+                    if (focused) selectOption(focused.dataset.value, focused.textContent);
+                    else closeDropdown();
+                }
+                else if (e.key === "Escape") { closeDropdown(); }
+                else if (e.key === "Tab") { closeDropdown(); }
+            });
+
+            dropdown.addEventListener("mousedown", function (e) {
+                var opt = e.target.closest(".searchable-option");
+                if (opt) {
+                    e.preventDefault();
+                    selectOption(opt.dataset.value, opt.textContent);
+                }
+            });
+
+            document.addEventListener("mousedown", function (e) {
+                if (!wrap.contains(e.target)) closeDropdown();
+            });
+
+            buildOptions();
+            syncInputToSelect();
+        }
+
+        function initAll() {
+            document.querySelectorAll("select[data-searchable]").forEach(function (sel) {
+                if (!sel.dataset.searchableInit) {
+                    sel.dataset.searchableInit = "true";
+                    initSearchableSelect(sel);
+                }
+            });
+        }
+
+        // Run on DOM ready and also after modals open (selects may be inside modals)
+        if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initAll);
+        } else {
+            initAll();
+        }
+
+        // Re-init when Bootstrap modals open (in case selects are inside modals)
+        document.addEventListener("shown.bs.modal", function () {
+            initAll();
         });
     })();
 </script>

@@ -100,7 +100,10 @@ public class StudentService {
 
     public StudentProfileUpdateRequest createProfileUpdateRequest(Student student) {
         return new StudentProfileUpdateRequest(
-                student.getUser().getName(),
+                student.getUser().getFirstName(),
+                student.getUser().getMiddleName(),
+                student.getUser().getLastName(),
+                student.getUser().getSuffix(),
                 student.getCourse(),
                 student.getYearLevel(),
                 student.getPhone(),
@@ -114,7 +117,10 @@ public class StudentService {
             throw new IllegalArgumentException("Profile details are required.");
         }
 
-        String normalizedName = normalizeRequiredText(request.getName(), "Name", 100);
+        String normalizedFirstName = normalizeRequiredText(request.getFirstName(), "First name", 50);
+        String normalizedMiddleName = normalizeOptionalText(request.getMiddleName(), "Middle name", 50, null);
+        String normalizedLastName = normalizeRequiredText(request.getLastName(), "Last name", 50);
+        String normalizedSuffix = normalizeOptionalText(request.getSuffix(), "Suffix", 20, null);
         String normalizedCourse = normalizeOptionalText(request.getCourse(), "Course", 120, "Not set");
         String normalizedYearLevel = normalizeOptionalYearLevel(request.getYearLevel());
         String normalizedPhone = normalizeOptionalPhone(request.getPhone());
@@ -126,7 +132,10 @@ public class StudentService {
         }
 
         return new StudentProfileUpdateRequest(
-                normalizedName,
+                normalizedFirstName,
+                normalizedMiddleName,
+                normalizedLastName,
+                normalizedSuffix,
                 normalizedCourse,
                 normalizedYearLevel,
                 normalizedPhone,
@@ -161,7 +170,10 @@ public class StudentService {
             throw new IllegalArgumentException("This contact number is already used.");
         }
 
-        user.setName(normalizedRequest.getName());
+        user.setFirstName(normalizedRequest.getFirstName());
+        user.setMiddleName(normalizedRequest.getMiddleName());
+        user.setLastName(normalizedRequest.getLastName());
+        user.setSuffix(normalizedRequest.getSuffix());
         student.setCourse(normalizedRequest.getCourse());
         student.setYearLevel(normalizedRequest.getYearLevel());
         student.setPhone(normalizedRequest.getPhone());

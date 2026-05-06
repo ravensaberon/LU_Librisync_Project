@@ -150,6 +150,14 @@ public class IssueRecord {
         return DisplayFormatUtils.formatDateTime(issueDate);
     }
 
+    public String getIssueDateOnlyDisplay() {
+        return issueDate == null ? "" : DisplayFormatUtils.formatDate(issueDate.toLocalDate());
+    }
+
+    public String getIssueTimeOnlyDisplay() {
+        return DisplayFormatUtils.formatTime(issueDate);
+    }
+
     public LocalDateTime getDueDate() {
         return dueDate;
     }

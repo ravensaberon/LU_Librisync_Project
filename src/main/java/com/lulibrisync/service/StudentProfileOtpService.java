@@ -96,6 +96,9 @@ public class StudentProfileOtpService {
                 "LU Librisync Verification Code | Profile Update",
                 buildProfileOtpEmailBody(student, otpCode, savedRequest)
         );
+        if (!delivered) {
+            throw new IllegalStateException("Unable to send profile OTP email right now. Please check the SMTP configuration and try again.");
+        }
 
         return new StudentProfileOtpDispatchResult(
                 toOtpState(savedRequest),

@@ -16,11 +16,14 @@ public class FineService {
 
     private final FineRepository fineRepository;
     private final AuditLogService auditLogService;
+    private final EmailNotificationService emailNotificationService;
 
     public FineService(FineRepository fineRepository,
-                       AuditLogService auditLogService) {
+                       AuditLogService auditLogService,
+                       EmailNotificationService emailNotificationService) {
         this.fineRepository = fineRepository;
         this.auditLogService = auditLogService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     public List<Fine> getAllFines() {
@@ -94,6 +97,7 @@ public class FineService {
 
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             if (existingFine != null && FineStatus.UNPAID.equals(existingFine.getStatus())) {
+                emailNotificationService.cancelUnpaidFineNotification(existingFine);
                 fineRepository.delete(existingFine);
                 auditLogService.logSystem(
                         "FINE_REMOVED",
@@ -121,6 +125,7 @@ public class FineService {
                     "Fine created for issue record " + issueRecord.getId(),
                     "Amount: " + amount + " | Student: " + issueRecord.getStudent().getStudentId()
             );
+            emailNotificationService.queueUnpaidFineNotification(savedFine);
             return;
         }
 
@@ -139,6 +144,7 @@ public class FineService {
                     "Fine amount updated for issue record " + issueRecord.getId(),
                     "New amount: " + amount
             );
+            emailNotificationService.queueUnpaidFineNotification(existingFine);
         }
     }
 
@@ -146,7 +152,10 @@ public class FineService {
     public void removeFineForIssue(Long issueRecordId) {
         fineRepository.findByIssueRecord_Id(issueRecordId)
                 .filter(fine -> FineStatus.UNPAID.equals(fine.getStatus()))
-                .ifPresent(fineRepository::delete);
+                .ifPresent(fine -> {
+                    emailNotificationService.cancelUnpaidFineNotification(fine);
+                    fineRepository.delete(fine);
+                });
     }
 
     @Transactional
@@ -158,6 +167,7 @@ public class FineService {
         fine.setStatus(FineStatus.PAID);
         fine.setPaidAt(LocalDateTime.now());
         Fine savedFine = fineRepository.save(fine);
+        emailNotificationService.cancelUnpaidFineNotification(savedFine);
         auditLogService.log(
                 actorEmail,
                 "FINE_PAID",
@@ -178,6 +188,7 @@ public class FineService {
         fine.setStatus(FineStatus.WAIVED);
         fine.setPaidAt(LocalDateTime.now());
         Fine savedFine = fineRepository.save(fine);
+        emailNotificationService.cancelUnpaidFineNotification(savedFine);
         auditLogService.log(
                 actorEmail,
                 "FINE_WAIVED",

@@ -1,11 +1,16 @@
 package com.lulibrisync.dto;
 
+import com.lulibrisync.model.User;
+
 import java.io.Serializable;
 import java.time.LocalDate;
 
 public class StudentProfileUpdateRequest implements Serializable {
 
-    private String name;
+    private String firstName;
+    private String middleName;
+    private String lastName;
+    private String suffix;
     private String course;
     private String yearLevel;
     private String phone;
@@ -16,12 +21,32 @@ public class StudentProfileUpdateRequest implements Serializable {
     }
 
     public StudentProfileUpdateRequest(String name,
+                                      String course,
+                                       String yearLevel,
+                                       String phone,
+                                       String address,
+                                       LocalDate dateOfBirth) {
+        setName(name);
+        this.course = course;
+        this.yearLevel = yearLevel;
+        this.phone = phone;
+        this.address = address;
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public StudentProfileUpdateRequest(String firstName,
+                                       String middleName,
+                                       String lastName,
+                                       String suffix,
                                        String course,
                                        String yearLevel,
                                        String phone,
                                        String address,
                                        LocalDate dateOfBirth) {
-        this.name = name;
+        this.firstName = firstName;
+        this.middleName = middleName;
+        this.lastName = lastName;
+        this.suffix = suffix;
         this.course = course;
         this.yearLevel = yearLevel;
         this.phone = phone;
@@ -30,11 +55,53 @@ public class StudentProfileUpdateRequest implements Serializable {
     }
 
     public String getName() {
-        return name;
+        User user = new User();
+        user.setFirstName(firstName);
+        user.setMiddleName(middleName);
+        user.setLastName(lastName);
+        user.setSuffix(suffix);
+        return user.getName();
     }
 
     public void setName(String name) {
-        this.name = name;
+        User user = new User();
+        user.setName(name);
+        this.firstName = user.getFirstName();
+        this.middleName = user.getMiddleName();
+        this.lastName = user.getLastName();
+        this.suffix = user.getSuffix();
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getMiddleName() {
+        return middleName;
+    }
+
+    public void setMiddleName(String middleName) {
+        this.middleName = middleName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
+    }
+
+    public String getSuffix() {
+        return suffix;
+    }
+
+    public void setSuffix(String suffix) {
+        this.suffix = suffix;
     }
 
     public String getCourse() {

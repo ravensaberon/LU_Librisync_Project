@@ -59,10 +59,19 @@
         </div>
 
         <c:if test="${activeTab == 'borrow'}">
-            <div class="tab-panel active" role="tabpanel" aria-label="Borrow requests">
-                <div class="section-title">Borrow requests</div>
+            <div class="tab-panel active" role="tabpanel" aria-label="Borrow requests" data-table-search-section data-table-search-empty="No borrow requests matched your search on this page.">
+                <div class="table-search-header">
+                    <div class="section-title">Borrow requests</div>
+                    <div class="table-search-actions">
+                        <span class="table-search-meta" data-table-search-count></span>
+                        <label class="table-search-shell" aria-label="Search borrow requests">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                        </label>
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" data-table-search-table>
                         <thead>
                         <tr>
                             <th>Book</th>
@@ -98,10 +107,10 @@
                                     <div class="d-flex flex-column gap-2 align-items-start">
                                         <c:choose>
                                             <c:when test="${reservation.status.name() == 'PENDING_APPROVAL'}">
-                                                <span class="muted-text small">Waiting for staff approval.</span>
+                                                <span class="muted-text small">Bring your student ID to the desk. Staff can approve and issue it there.</span>
                                             </c:when>
                                             <c:when test="${reservation.status.name() == 'READY'}">
-                                                <span class="muted-text small">Bring your ID to the desk.</span>
+                                                <span class="muted-text small">Bring your student ID to the desk.</span>
                                             </c:when>
                                         </c:choose>
                                         <div class="d-flex flex-wrap gap-2">
@@ -159,10 +168,19 @@
         </c:if>
 
         <c:if test="${activeTab == 'queue'}">
-            <div class="tab-panel active" role="tabpanel" aria-label="Reservation queue">
-                <div class="section-title">Reservation queue</div>
+            <div class="tab-panel active" role="tabpanel" aria-label="Reservation queue" data-table-search-section data-table-search-empty="No reservation queue rows matched your search on this page.">
+                <div class="table-search-header">
+                    <div class="section-title">Reservation queue</div>
+                    <div class="table-search-actions">
+                        <span class="table-search-meta" data-table-search-count></span>
+                        <label class="table-search-shell" aria-label="Search reservation queue">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                        </label>
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" data-table-search-table>
                         <thead>
                         <tr>
                             <th>Book</th>
@@ -202,15 +220,17 @@
                                         <c:if test="${reservation.status.name() == 'READY'}">
                                             <span class="tag-chip">Bring your ID and visit the circulation desk for release.</span>
                                         </c:if>
-                                        <button class="btn btn-outline-secondary" type="button"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#reservationQrModal"
-                                                data-reservation-qr="${reservation.deskQrCode}"
-                                                data-book-title="${reservation.book.title}"
-                                                data-reservation-type="Reservation queue"
-                                                data-reservation-status="${reservation.status}">
-                                            <i class="bi bi-qr-code me-2"></i>Show pickup QR
-                                        </button>
+                                        <c:if test="${reservation.status.name() == 'READY'}">
+                                            <button class="btn btn-outline-secondary" type="button"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#reservationQrModal"
+                                                    data-reservation-qr="${reservation.deskQrCode}"
+                                                    data-book-title="${reservation.book.title}"
+                                                    data-reservation-type="Reservation queue"
+                                                    data-reservation-status="${reservation.status}">
+                                                <i class="bi bi-qr-code me-2"></i>Show pickup QR
+                                            </button>
+                                        </c:if>
                                         <c:if test="${reservation.active}">
                                             <form method="post" action="${pageContext.request.contextPath}/student/reservations/${reservation.id}/cancel">
                                                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">

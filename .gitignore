@@ -1,6 +1,7 @@
 /target/
 /.mvn/
 /.m2/
+/.codex-m2/
 /.idea/
 /.classpath
 /.project

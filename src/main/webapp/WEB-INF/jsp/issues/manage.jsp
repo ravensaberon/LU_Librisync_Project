@@ -48,9 +48,14 @@
                 <h1 class="fw-bold mt-3 mb-2">Issue, Return, And Release Books</h1>
                 <p class="muted-text mb-0">Manage direct issue transactions, reservation pickup releases, and circulation history from one admin desk view.</p>
             </div>
-            <button class="btn btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#issueBookFormModal">
-                <i class="bi bi-journal-plus me-2"></i>Issue A New Book
-            </button>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-warm scanner-trigger" type="button" data-bs-toggle="modal" data-bs-target="#borrowQrScannerModal">
+                    <i class="bi bi-qr-code-scan me-2"></i>Scan student pickup QR
+                </button>
+                <button class="btn btn-brand" type="button" data-bs-toggle="modal" data-bs-target="#issueBookFormModal">
+                    <i class="bi bi-journal-plus me-2"></i>Issue A New Book
+                </button>
+            </div>
         </div>
     </section>
 
@@ -61,6 +66,7 @@
                     <div class="section-title mb-2">Edit Issue Record</div>
                     <p class="helper-copy">
                         Adjust due dates or internal remarks for an existing circulation record without deleting the transaction history.
+                        Update the details when the student returns the book.
                     </p>
                 </div>
                 <a class="action-link" href="${pageContext.request.contextPath}/admin/issues?activePage=${activeIssuesPage.page}&historyPage=${issueHistoryPage.page}">Cancel editing</a>
@@ -118,12 +124,19 @@
         </div>
     </section>
 
-    <section class="panel-card mb-4 dashboard-tab-panel is-active" id="issue-active-panel" role="tabpanel" data-issue-desk-tab-panel>
-        <div class="issue-panel-header">
+    <section class="panel-card mb-4 dashboard-tab-panel is-active" id="issue-active-panel" role="tabpanel" data-issue-desk-tab-panel data-table-search-section data-table-search-empty="No active issue records matched your search on this page.">
+        <div class="issue-panel-header table-search-header">
             <div class="section-title">Active Issue Records</div>
+            <div class="table-search-actions">
+                <span class="table-search-meta" data-table-search-count></span>
+                <label class="table-search-shell" aria-label="Search active issue records">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                </label>
+            </div>
         </div>
         <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table align-middle" data-table-search-table>
                 <thead>
                 <tr>
                     <th>Issue code</th>
@@ -145,7 +158,7 @@
                         <td>${issue.book.title}</td>
                         <td>${issue.student.studentId} - ${issue.student.user.name}</td>
                         <td>${issue.issuedBy.name}</td>
-                        <td>${issue.issueDateDisplay}</td>
+                        <td><div>${issue.issueDateOnlyDisplay}</div><div class="muted-text" style="font-size:.85em;">${issue.issueTimeOnlyDisplay}</div></td>
                         <td>${issue.dueDateDisplay}</td>
                         <td>
                             <div class="d-flex flex-wrap gap-2">
@@ -216,18 +229,19 @@
         </c:if>
     </section>
 
-    <section class="panel-card dashboard-tab-panel" id="issue-borrow-panel" role="tabpanel" data-issue-desk-tab-panel hidden>
-        <div class="issue-panel-header d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <section class="panel-card dashboard-tab-panel" id="issue-borrow-panel" role="tabpanel" data-issue-desk-tab-panel data-table-search-section data-table-search-empty="No borrow requests matched your search on this page." hidden>
+        <div class="issue-panel-header table-search-header">
             <div>
                 <div class="section-title mb-1">Borrow Requests</div>
-                <p class="helper-copy mb-0">Walk-in borrow requests submitted by students. Approve or deny, then confirm the physical pickup at the desk.</p>
+                <p class="helper-copy mb-0">Walk-in borrow requests submitted by students.<br>Approving a request at the desk immediately creates an active issue record.</p>
             </div>
-            <button class="btn btn-warm scanner-trigger" type="button" data-bs-toggle="modal" data-bs-target="#borrowQrScannerModal">
-                <i class="bi bi-qr-code-scan me-2"></i>Scan student pickup QR
-            </button>
+            <label class="table-search-shell ms-auto" aria-label="Search borrow requests">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+            </label>
         </div>
         <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table align-middle" data-table-search-table>
                 <thead>
                 <tr>
                     <th>Book</th>
@@ -249,7 +263,7 @@
                                     <span class="tag-chip warn">Pending approval</span>
                                 </c:when>
                                 <c:when test="${reservation.status.name() == 'READY'}">
-                                    <span class="tag-chip">Ready</span>
+                                    <span class="tag-chip">Ready to issue</span>
                                 </c:when>
                                 <c:otherwise>
                                     <span class="tag-chip">${reservation.status}</span>
@@ -257,40 +271,45 @@
                             </c:choose>
                         </td>
                         <td>${reservation.reservedAtDisplay}</td>
-                        <td>${reservation.expiresAtDisplay}</td>
                         <td>
                             <c:choose>
-                                <c:when test="${reservation.status.name() == 'PENDING_APPROVAL'}">
-                                    <div class="d-flex gap-2">
-                                        <form method="post" action="${pageContext.request.contextPath}/admin/reservations/${reservation.id}/approve">
-                                            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                                            <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
-                                            <input type="hidden" name="source" value="issues">
-                                            <button class="btn btn-brand btn-sm" type="submit"><i class="bi bi-check-lg me-1"></i>Approve</button>
-                                        </form>
-                                        <form method="post" action="${pageContext.request.contextPath}/admin/reservations/${reservation.id}/deny">
-                                            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                                            <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
-                                            <input type="hidden" name="source" value="issues">
-                                            <button class="btn btn-warm btn-sm" type="submit"><i class="bi bi-x-lg me-1"></i>Deny</button>
-                                        </form>
-                                    </div>
+                                <c:when test="${not empty reservation.claimDeadlineDisplay}">
+                                    ${reservation.claimDeadlineDisplay}
+                                    <c:if test="${reservation.status.name() == 'PENDING_APPROVAL'}">
+                                        <div class="form-note mt-1">Est. — pending approval</div>
+                                    </c:if>
                                 </c:when>
-                                <c:when test="${reservation.status.name() == 'READY'}">
-                                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                                        <form method="post" action="${pageContext.request.contextPath}/admin/reservations/${reservation.id}/claim" class="d-flex align-items-center gap-2 flex-wrap">
+                                <c:otherwise>
+                                    <span class="muted-text">—</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </td>
+                        <td>
+                            <c:choose>
+                                <c:when test="${reservation.status.name() == 'PENDING_APPROVAL' or reservation.status.name() == 'READY'}">
+                                    <div class="d-flex gap-2">
+                                        <form method="post" action="${pageContext.request.contextPath}/admin/issues/borrow-requests/${reservation.id}/approve">
                                             <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                                            <input type="hidden" name="activePage" value="${activeIssuesPage.page}">
+                                            <input type="hidden" name="historyPage" value="${issueHistoryPage.page}">
                                             <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
-                                            <input type="hidden" name="source" value="issues">
-                                            <input class="form-control form-control-sm" style="width:140px" name="remarks" placeholder="Remarks (optional)">
-                                            <button class="btn btn-brand btn-sm" type="submit"><i class="bi bi-box-arrow-right me-1"></i>Confirm pickup</button>
+                                            <button class="btn btn-brand btn-sm" type="submit">
+                                                <i class="bi bi-check-lg me-1"></i>
+                                                <c:choose>
+                                                    <c:when test="${reservation.status.name() == 'READY'}">Issue now</c:when>
+                                                    <c:otherwise>Approve &amp; issue</c:otherwise>
+                                                </c:choose>
+                                            </button>
                                         </form>
-                                        <form method="post" action="${pageContext.request.contextPath}/admin/reservations/${reservation.id}/cancel">
-                                            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                                            <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
-                                            <input type="hidden" name="source" value="issues">
-                                            <button class="btn btn-warm btn-sm" type="submit">Cancel</button>
-                                        </form>
+                                        <c:if test="${reservation.status.name() == 'PENDING_APPROVAL'}">
+                                            <form method="post" action="${pageContext.request.contextPath}/admin/issues/borrow-requests/${reservation.id}/deny">
+                                                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                                                <input type="hidden" name="activePage" value="${activeIssuesPage.page}">
+                                                <input type="hidden" name="historyPage" value="${issueHistoryPage.page}">
+                                                <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
+                                                <button class="btn btn-warm btn-sm" type="submit"><i class="bi bi-x-lg me-1"></i>Deny</button>
+                                            </form>
+                                        </c:if>
                                     </div>
                                 </c:when>
                                 <c:otherwise>
@@ -327,12 +346,19 @@
         </c:if>
     </section>
 
-    <section class="panel-card dashboard-tab-panel" id="issue-history-panel" role="tabpanel" data-issue-desk-tab-panel hidden>
-        <div class="issue-panel-header">
+    <section class="panel-card dashboard-tab-panel" id="issue-history-panel" role="tabpanel" data-issue-desk-tab-panel data-table-search-section data-table-search-empty="No circulation history rows matched your search on this page." hidden>
+        <div class="issue-panel-header table-search-header">
             <div class="section-title">Circulation History</div>
+            <div class="table-search-actions">
+                <span class="table-search-meta" data-table-search-count></span>
+                <label class="table-search-shell" aria-label="Search circulation history">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                </label>
+            </div>
         </div>
         <div class="table-responsive">
-            <table class="table align-middle">
+            <table class="table align-middle" data-table-search-table>
                 <thead>
                 <tr>
                     <th>Issue code</th>
@@ -353,7 +379,7 @@
                         <td>${issue.book.title}</td>
                         <td>${issue.student.studentId} - ${issue.student.user.name}</td>
                         <td>${issue.issuedBy.name}</td>
-                        <td>${issue.issueDateDisplay}</td>
+                        <td><div>${issue.issueDateOnlyDisplay}</div><div class="muted-text" style="font-size:.85em;">${issue.issueTimeOnlyDisplay}</div></td>
                         <td>${issue.dueDateDisplay}</td>
                         <td>${issue.returnDateDisplay}</td>
                         <td><span class="tag-chip">${issue.status}</span></td>
@@ -570,15 +596,16 @@
                     <div>
                         <span class="modal-kicker">Pickup Scan</span>
                         <h2 class="h4 mb-1 mt-2">Scan a student borrow request QR</h2>
-                        <p class="modal-subtitle mb-0">Scan the student's QR to confirm the desk release automatically. The due date is set by the circulation policy.</p>
+                        <p class="modal-subtitle mb-0">Scan the student's QR, review the request preview, then confirm to auto-issue the book right away.</p>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <form id="borrowQrClaimForm" method="post" action="${pageContext.request.contextPath}/admin/reservations/claim-by-qr" class="row g-3 mb-3">
+                    <form id="borrowQrClaimForm" method="post" action="${pageContext.request.contextPath}/admin/issues/borrow-requests/claim-by-qr" class="row g-3 mb-3">
                         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
+                        <input type="hidden" name="activePage" value="${activeIssuesPage.page}">
+                        <input type="hidden" name="historyPage" value="${issueHistoryPage.page}">
                         <input type="hidden" name="borrowPage" value="${borrowRequestsPage.page}">
-                        <input type="hidden" name="source" value="issues">
                         <input type="hidden" name="qrCode" id="borrowQrCodeField">
                         <div class="col-12">
                             <label class="form-label" for="borrowScannerRemarks">Remarks</label>
@@ -610,10 +637,10 @@
                             <strong>QR code detected</strong>
                             <span id="borrowPreviewCode" class="d-block mt-1" style="font-family:monospace;font-size:.9rem;word-break:break-all;color:var(--primary-900)"></span>
                         </div>
-                        <p class="muted-text mb-3">Review the code above. Click <strong>Confirm &amp; Issue</strong> to complete the desk release, or <strong>Re-scan</strong> to try again.</p>
+                        <p class="muted-text mb-3">Review the code above. Click <strong>Confirm and issue</strong> to auto-issue the borrow request, or <strong>Re-scan</strong> to try again.</p>
                         <div class="d-flex gap-2">
-                            <button class="btn btn-brand" type="button" id="borrowPreviewConfirmBtn">
-                                <i class="bi bi-box-arrow-right me-2"></i>Confirm &amp; Issue
+                            <button class="btn btn-brand" type="submit" form="borrowQrClaimForm" id="borrowPreviewConfirmBtn">
+                                <i class="bi bi-box-arrow-right me-2"></i>Confirm and issue
                             </button>
                             <button class="btn btn-warm" type="button" id="borrowPreviewRescanBtn">
                                 <i class="bi bi-arrow-repeat me-2"></i>Re-scan
@@ -773,7 +800,7 @@
             window.LuLibrisyncQr.downloadCanvas(currentIssueQrCanvas, downloadIssueQrButton.dataset.filename);
         });
 
-        // ── Borrow Request QR Scanner ──────────────────────────────────────
+        // Borrow request QR scanner
         const borrowScannerModalElement = document.getElementById("borrowQrScannerModal");
         const borrowScannerUploadInput = document.getElementById("borrowScannerUpload");
         const borrowQrCodeField = document.getElementById("borrowQrCodeField");
@@ -805,7 +832,10 @@
 
         function showBorrowScanPreview(rawValue) {
             const detectedCode = (rawValue || "").trim();
-            if (!detectedCode) return;
+            if (!detectedCode) {
+                return;
+            }
+
             borrowScanner.stop();
             borrowQrCodeField.value = detectedCode;
             borrowPreviewCode.textContent = detectedCode;
@@ -821,9 +851,6 @@
             borrowScanner.start();
         }
 
-        borrowPreviewConfirmBtn.addEventListener("click", function () {
-            borrowClaimForm.requestSubmit();
-        });
         borrowPreviewRescanBtn.addEventListener("click", function () {
             resetBorrowToScanner();
         });
@@ -833,6 +860,7 @@
             borrowScannerView.hidden = false;
             borrowScanner.start();
         });
+
         borrowScannerModalElement.addEventListener("hidden.bs.modal", function () {
             borrowScanner.stop();
             borrowScanner.setStatus("Camera scanner is preparing. Hold the student pickup QR inside the highlighted frame.", false);
@@ -842,9 +870,13 @@
             borrowScannerPreview.hidden = true;
             borrowScannerView.hidden = false;
         });
+
         borrowScannerUploadInput.addEventListener("change", function (event) {
             const selectedFile = event.target.files && event.target.files[0];
-            if (!selectedFile) return;
+            if (!selectedFile) {
+                return;
+            }
+
             borrowScanner.decodeFile(selectedFile);
             borrowScannerUploadInput.value = "";
         });

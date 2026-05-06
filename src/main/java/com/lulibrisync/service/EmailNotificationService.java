@@ -4,12 +4,15 @@ import com.lulibrisync.model.AdminNotificationType;
 import com.lulibrisync.model.EmailNotification;
 import com.lulibrisync.model.EmailNotificationStatus;
 import com.lulibrisync.model.EmailNotificationType;
+import com.lulibrisync.model.Fine;
+import com.lulibrisync.model.FineStatus;
 import com.lulibrisync.model.IssueRecord;
 import com.lulibrisync.model.IssueStatus;
 import com.lulibrisync.model.Reservation;
 import com.lulibrisync.model.ReservationStatus;
 import com.lulibrisync.model.User;
 import com.lulibrisync.repository.EmailNotificationRepository;
+import com.lulibrisync.repository.FineRepository;
 import com.lulibrisync.repository.IssueRecordRepository;
 import com.lulibrisync.repository.ReservationRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class EmailNotificationService {
@@ -37,6 +41,7 @@ public class EmailNotificationService {
     private final EmailNotificationRepository emailNotificationRepository;
     private final IssueRecordRepository issueRecordRepository;
     private final ReservationRepository reservationRepository;
+    private final FineRepository fineRepository;
     private final AdminNotificationService adminNotificationService;
     private final Path outboxRoot;
     private final String smtpHost;
@@ -49,6 +54,7 @@ public class EmailNotificationService {
     public EmailNotificationService(EmailNotificationRepository emailNotificationRepository,
                                     IssueRecordRepository issueRecordRepository,
                                     ReservationRepository reservationRepository,
+                                    FineRepository fineRepository,
                                     AdminNotificationService adminNotificationService,
                                     @Value("${lulibrisync.smtp.host:}") String smtpHost,
                                     @Value("${lulibrisync.smtp.port:587}") String smtpPort,
@@ -60,6 +66,7 @@ public class EmailNotificationService {
         this.emailNotificationRepository = emailNotificationRepository;
         this.issueRecordRepository = issueRecordRepository;
         this.reservationRepository = reservationRepository;
+        this.fineRepository = fineRepository;
         this.adminNotificationService = adminNotificationService;
         this.smtpHost = smtpHost;
         this.smtpPort = smtpPort;
@@ -337,6 +344,103 @@ public class EmailNotificationService {
     }
 
     @Transactional
+    public void queueUnpaidFineNotification(Fine fine) {
+        if (fine == null || !fine.isOutstanding() || fine.getStudent() == null || fine.getStudent().getUser() == null) {
+            return;
+        }
+
+        User recipient = fine.getStudent().getUser();
+        upsertPendingNotification(
+                recipient,
+                EmailNotificationType.UNPAID_FINE,
+                buildUnpaidFineSubject(fine),
+                buildUnpaidFineEmailBody(recipient, fine),
+                LocalDateTime.now().plusMinutes(1)
+        );
+    }
+
+    @Transactional
+    public void cancelUnpaidFineNotification(Fine fine) {
+        if (fine == null || fine.getStudent() == null || fine.getStudent().getUser() == null) {
+            return;
+        }
+
+        emailNotificationRepository.findByUser_IdAndNotificationTypeAndSubjectAndStatus(
+                        fine.getStudent().getUser().getId(),
+                        EmailNotificationType.UNPAID_FINE,
+                        buildUnpaidFineSubject(fine),
+                        EmailNotificationStatus.PENDING
+                )
+                .ifPresent(emailNotificationRepository::delete);
+    }
+
+    private String buildUnpaidFineSubject(Fine fine) {
+        String fineId = fine.getId() == null ? "pending" : fine.getId().toString();
+        String bookTitle = fine.getIssueRecord() != null && fine.getIssueRecord().getBook() != null
+                ? fine.getIssueRecord().getBook().getTitle()
+                : "Library item";
+        return "Unpaid Fine | Fine #" + fineId + " | " + bookTitle;
+    }
+
+    private String buildUnpaidFineEmailBody(User recipient, Fine fine) {
+        IssueRecord issueRecord = fine.getIssueRecord();
+        String bookTitle = issueRecord != null && issueRecord.getBook() != null
+                ? issueRecord.getBook().getTitle()
+                : "Library item";
+        String issueCode = issueRecord == null || issueRecord.getQrIssueCode() == null
+                ? "Not available"
+                : issueRecord.getQrIssueCode();
+        String calculatedAt = fine.getCalculatedAt() == null
+                ? "Not recorded"
+                : DATE_TIME_FORMATTER.format(fine.getCalculatedAt());
+        String dueDate = issueRecord == null || issueRecord.getDueDate() == null
+                ? "Not recorded"
+                : DATE_TIME_FORMATTER.format(issueRecord.getDueDate());
+        String amount = fine.getAmount() == null ? "PHP 0.00" : "PHP " + fine.getAmount().toPlainString();
+
+        return """
+                <div style="margin:0;padding:24px;background:#fff8f4;font-family:Segoe UI,Arial,sans-serif;color:#362012;">
+                  <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #f0dccd;border-radius:24px;overflow:hidden;box-shadow:0 18px 44px rgba(105,48,18,0.12);">
+                    <div style="padding:24px 32px;background:linear-gradient(135deg,#b45309,#f59e0b);color:#ffffff;">
+                      <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.88;">LU Librisync</div>
+                      <h1 style="margin:10px 0 4px;font-size:28px;line-height:1.2;">Unpaid Library Fine</h1>
+                      <p style="margin:0;font-size:15px;opacity:0.92;">Please settle your outstanding fine at the circulation desk.</p>
+                    </div>
+                    <div style="padding:32px;">
+                      <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello %s,</p>
+                      <p style="margin:0 0 20px;font-size:15px;line-height:1.7;">Our records show an unpaid fine on your LU Librisync account. Please settle this balance with the library staff to keep your borrowing privileges clear.</p>
+                      <div style="margin:0 0 24px;padding:20px;border-radius:18px;background:#fffdfa;border:1px solid #f0dccd;">
+                        <div style="font-size:15px;font-weight:700;color:#5b3213;margin-bottom:12px;">Fine Details</div>
+                        <table style="width:100%%;border-collapse:collapse;font-size:14px;line-height:1.6;">
+                          <tr><td style="padding:6px 0;color:#86634a;">Book Title</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#321b0e;">%s</td></tr>
+                          <tr><td style="padding:6px 0;color:#86634a;">Student ID</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#321b0e;">%s</td></tr>
+                          <tr><td style="padding:6px 0;color:#86634a;">Issue Code</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#321b0e;">%s</td></tr>
+                          <tr><td style="padding:6px 0;color:#86634a;">Due Date</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#321b0e;">%s</td></tr>
+                          <tr><td style="padding:6px 0;color:#86634a;">Calculated At</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#321b0e;">%s</td></tr>
+                          <tr><td style="padding:10px 0 0;color:#86634a;">Amount Due</td><td style="padding:10px 0 0;text-align:right;font-size:22px;font-weight:800;color:#b45309;">%s</td></tr>
+                        </table>
+                      </div>
+                      <div style="padding:16px 18px;border-radius:16px;background:#fff8ea;border:1px solid #f1ddb1;color:#6b5112;font-size:13px;line-height:1.7;">
+                        Unpaid fines may temporarily block new borrow requests until they are paid or waived by the library staff.
+                      </div>
+                    </div>
+                    <div style="padding:18px 32px;background:#fffaf5;border-top:1px solid #f0dccd;font-size:12px;line-height:1.7;color:#8a6d5a;">
+                      This is an automated message from LU Librisync. Please do not reply to this email.
+                    </div>
+                  </div>
+                </div>
+                """.formatted(
+                escapeHtml(recipient.getName()),
+                escapeHtml(bookTitle),
+                fine.getStudent() == null ? "" : escapeHtml(fine.getStudent().getStudentId()),
+                escapeHtml(issueCode),
+                escapeHtml(dueDate),
+                escapeHtml(calculatedAt),
+                escapeHtml(amount)
+        );
+    }
+
+    @Transactional
     public void queueReservationExpiredNotification(Reservation reservation) {
         if (reservation == null || reservation.getStudent() == null || reservation.getStudent().getUser() == null) {
             return;
@@ -416,7 +520,8 @@ public class EmailNotificationService {
                     || notification.getNotificationType() == EmailNotificationType.DUE_REMINDER_1_DAY
                     || notification.getNotificationType() == EmailNotificationType.DUE_REMINDER_ON_DATE
                     || notification.getNotificationType() == EmailNotificationType.RESERVATION_READY
-                    || notification.getNotificationType() == EmailNotificationType.RESERVATION_EXPIRED;
+                    || notification.getNotificationType() == EmailNotificationType.RESERVATION_EXPIRED
+                    || notification.getNotificationType() == EmailNotificationType.UNPAID_FINE;
             boolean sent = sendEmail(notification.getUser().getEmail(), notification.getSubject(), notification.getBody(), isHtml);
             notification.setSentAt(LocalDateTime.now());
             notification.setStatus(sent ? EmailNotificationStatus.SENT : EmailNotificationStatus.FAILED);
@@ -444,6 +549,11 @@ public class EmailNotificationService {
         List<Reservation> readyReservations = reservationRepository.findByStatusInOrderByReservedAtAsc(List.of(ReservationStatus.READY));
         for (Reservation reservation : readyReservations) {
             queueReservationReadyNotification(reservation);
+        }
+
+        List<Fine> unpaidFines = fineRepository.findByStatusOrderByCalculatedAtDesc(FineStatus.UNPAID);
+        for (Fine fine : unpaidFines) {
+            queueUnpaidFineNotification(fine);
         }
     }
 
@@ -501,14 +611,27 @@ public class EmailNotificationService {
 
         if (notification.getId() != null
                 && notificationType.equals(notification.getNotificationType())
+                && notification.getUser() != null
                 && recipient.getId().equals(notification.getUser().getId())
                 && subject.equals(notification.getSubject())
-                && body.equals(notification.getBody())
-                && scheduledAt.equals(notification.getScheduledAt())
-                && (EmailNotificationStatus.PENDING.equals(notification.getStatus())
-                || EmailNotificationStatus.SENT.equals(notification.getStatus())
-                || EmailNotificationStatus.FAILED.equals(notification.getStatus()))) {
-            return;
+                && body.equals(notification.getBody())) {
+            if (EmailNotificationStatus.SENT.equals(notification.getStatus())) {
+                return;
+            }
+            if (EmailNotificationStatus.PENDING.equals(notification.getStatus())) {
+                if (notification.getScheduledAt() == null || scheduledAt.isBefore(notification.getScheduledAt())) {
+                    notification.setScheduledAt(scheduledAt);
+                    emailNotificationRepository.save(notification);
+                }
+                return;
+            }
+            if (EmailNotificationStatus.FAILED.equals(notification.getStatus())) {
+                notification.setScheduledAt(scheduledAt);
+                notification.setStatus(EmailNotificationStatus.PENDING);
+                notification.setSentAt(null);
+                emailNotificationRepository.save(notification);
+                return;
+            }
         }
 
         notification.setUser(recipient);
@@ -548,8 +671,22 @@ public class EmailNotificationService {
 
         try {
             Process process = processBuilder.start();
-            String output = new String(process.getInputStream().readAllBytes());
-            int exitCode = process.waitFor();
+            boolean finished = process.waitFor(45, TimeUnit.SECONDS);
+            if (!finished) {
+                process.destroyForcibly();
+                String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                writeOutboxCopy(
+                        toEmail,
+                        subject,
+                        body + System.lineSeparator() + System.lineSeparator()
+                                + "Send error:" + System.lineSeparator()
+                                + "SMTP send timed out after 45 seconds." + System.lineSeparator() + output,
+                        htmlBody
+                );
+                return false;
+            }
+            String output = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exitCode = process.exitValue();
             if (exitCode == 0) {
                 return true;
             }
@@ -584,33 +721,24 @@ public class EmailNotificationService {
                                              boolean htmlBody) {
         String encodedSubject = encodeBase64(subject);
         String encodedBody = encodeBase64(body);
-        String credentialsBlock = "";
-        if (StringUtils.hasText(smtpUsername)) {
-            credentialsBlock = "$client.Credentials = New-Object System.Net.NetworkCredential('" + escapePowerShell(smtpUsername) + "', '" + escapePowerShell(smtpPassword) + "');";
-        }
 
         return """
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
                 $utf8 = [System.Text.Encoding]::UTF8;
-                $message = New-Object System.Net.Mail.MailMessage;
-                $message.From = '%s';
-                $message.To.Add('%s');
-                $message.Subject = $utf8.GetString([System.Convert]::FromBase64String('%s'));
-                $message.Body = $utf8.GetString([System.Convert]::FromBase64String('%s'));
-                $message.IsBodyHtml = [System.Convert]::ToBoolean('%s');
-                $client = New-Object System.Net.Mail.SmtpClient('%s', %s);
-                $client.EnableSsl = [System.Convert]::ToBoolean('%s');
-                %s
-                $client.Send($message);
+                $subject = $utf8.GetString([System.Convert]::FromBase64String('%s'));
+                $body = $utf8.GetString([System.Convert]::FromBase64String('%s'));
+                $credential = New-Object System.Management.Automation.PSCredential('%s', (ConvertTo-SecureString '%s' -AsPlainText -Force));
+                Send-MailMessage -SmtpServer '%s' -Port %s -UseSsl -Credential $credential -From '%s' -To '%s' -Subject $subject -Body $body -BodyAsHtml:$%s -Encoding UTF8;
                 """.formatted(
-                escapePowerShell(smtpFrom),
-                escapePowerShell(toEmail),
                 encodedSubject,
                 encodedBody,
-                htmlBody,
+                escapePowerShell(smtpUsername),
+                escapePowerShell(smtpPassword),
                 escapePowerShell(smtpHost),
                 escapePowerShell(smtpPort),
-                escapePowerShell(smtpSsl),
-                credentialsBlock
+                escapePowerShell(smtpFrom),
+                escapePowerShell(toEmail),
+                htmlBody
         );
     }
 

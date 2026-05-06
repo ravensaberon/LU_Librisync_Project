@@ -97,10 +97,19 @@
         </div>
 
         <c:if test="${activeTab == 'all'}">
-            <div class="tab-panel active" role="tabpanel" aria-label="All borrowed records">
-                <div class="section-title">All borrowed records</div>
+            <div class="tab-panel active" role="tabpanel" aria-label="All borrowed records" data-table-search-section data-table-search-empty="No borrowed records matched your search on this page.">
+                <div class="table-search-header">
+                    <div class="section-title">All borrowed records</div>
+                    <div class="table-search-actions">
+                        <span class="table-search-meta" data-table-search-count></span>
+                        <label class="table-search-shell" aria-label="Search all borrowed records">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                        </label>
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" data-table-search-table>
                         <thead>
                         <tr>
                             <th>Book</th>
@@ -185,10 +194,19 @@
         </c:if>
 
         <c:if test="${activeTab == 'current'}">
-            <div class="tab-panel active" role="tabpanel" aria-label="Currently borrowed">
-                <div class="section-title">Currently borrowed</div>
+            <div class="tab-panel active" role="tabpanel" aria-label="Currently borrowed" data-table-search-section data-table-search-empty="No current borrowed books matched your search on this page.">
+                <div class="table-search-header">
+                    <div class="section-title">Currently borrowed</div>
+                    <div class="table-search-actions">
+                        <span class="table-search-meta" data-table-search-count></span>
+                        <label class="table-search-shell" aria-label="Search current borrowed books">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                        </label>
+                    </div>
+                </div>
                 <div class="table-responsive mb-4">
-                    <table class="table align-middle">
+                    <table class="table align-middle" data-table-search-table>
                         <thead>
                         <tr>
                             <th>Book</th>
@@ -259,10 +277,19 @@
         </c:if>
 
         <c:if test="${activeTab == 'requests'}">
-            <div class="tab-panel active" role="tabpanel" aria-label="Return requests">
-                <div class="section-title">Return requests</div>
+            <div class="tab-panel active" role="tabpanel" aria-label="Return requests" data-table-search-section data-table-search-empty="No return requests matched your search on this page.">
+                <div class="table-search-header">
+                    <div class="section-title">Return requests</div>
+                    <div class="table-search-actions">
+                        <span class="table-search-meta" data-table-search-count></span>
+                        <label class="table-search-shell" aria-label="Search return requests">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                        </label>
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" data-table-search-table>
                         <thead>
                         <tr>
                             <th>Book</th>
@@ -322,10 +349,19 @@
         </c:if>
 
         <c:if test="${activeTab == 'returned'}">
-            <div class="tab-panel active" role="tabpanel" aria-label="Returned books">
-                <div class="section-title">Returned books</div>
+            <div class="tab-panel active" role="tabpanel" aria-label="Returned books" data-table-search-section data-table-search-empty="No returned books matched your search on this page.">
+                <div class="table-search-header">
+                    <div class="section-title">Returned books</div>
+                    <div class="table-search-actions">
+                        <span class="table-search-meta" data-table-search-count></span>
+                        <label class="table-search-shell" aria-label="Search returned books">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input class="table-search-input" type="search" placeholder="Search this table" data-table-search-input>
+                        </label>
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle" data-table-search-table>
                         <thead>
                         <tr>
                             <th>Book</th>

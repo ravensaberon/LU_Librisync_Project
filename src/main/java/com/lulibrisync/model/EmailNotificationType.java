@@ -7,5 +7,6 @@ public enum EmailNotificationType {
     DUE_REMINDER_ON_DATE,
     RESERVATION_READY,
     RESERVATION_EXPIRED,
+    UNPAID_FINE,
     PASSWORD_RESET
 }

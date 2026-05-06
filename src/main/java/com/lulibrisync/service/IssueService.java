@@ -6,6 +6,8 @@ import com.lulibrisync.model.AdminNotificationType;
 import com.lulibrisync.model.Book;
 import com.lulibrisync.model.IssueRecord;
 import com.lulibrisync.model.IssueStatus;
+import com.lulibrisync.model.Reservation;
+import com.lulibrisync.model.ReservationStatus;
 import com.lulibrisync.model.Student;
 import com.lulibrisync.model.User;
 import com.lulibrisync.model.UserStatus;
@@ -141,6 +143,47 @@ public class IssueService {
     }
 
     @Transactional
+    public IssueRecord issueReservationPickup(Long reservationId, String issuerEmail, String remarks) {
+        Reservation reservation = reservationService.getReservationById(reservationId);
+
+        // Auto-approve PENDING_APPROVAL borrow requests on desk scan
+        if (ReservationStatus.PENDING_APPROVAL.equals(reservation.getStatus())) {
+            reservationService.approveBorrowRequest(reservation.getId());
+            reservation = reservationService.getReservationById(reservation.getId());
+        }
+
+        // Promote PENDING queue reservations if a copy is now available
+        if (ReservationStatus.PENDING.equals(reservation.getStatus())) {
+            reservationService.promoteReservationsForBook(reservation.getBook().getId());
+            reservation = reservationService.getReservationById(reservation.getId());
+        }
+
+        if (!ReservationStatus.READY.equals(reservation.getStatus())) {
+            if (ReservationStatus.PENDING.equals(reservation.getStatus())) {
+                throw new IllegalArgumentException("This " + (reservation.isBorrowRequest() ? "borrow request" : "reservation") + " is not ready for desk release yet — no copy is currently available.");
+            }
+            if (ReservationStatus.CLAIMED.equals(reservation.getStatus())) {
+                throw new IllegalArgumentException("This " + (reservation.isBorrowRequest() ? "borrow request" : "reservation") + " has already been processed.");
+            }
+            if (ReservationStatus.CANCELLED.equals(reservation.getStatus())) {
+                throw new IllegalArgumentException("This " + (reservation.isBorrowRequest() ? "borrow request" : "reservation") + " was cancelled and can no longer be issued.");
+            }
+            if (ReservationStatus.DENIED.equals(reservation.getStatus())) {
+                throw new IllegalArgumentException("This borrow request was denied and cannot be issued.");
+            }
+            throw new IllegalArgumentException("This " + (reservation.isBorrowRequest() ? "borrow request" : "reservation") + " is not in a valid state for desk release (status: " + reservation.getStatus() + ").");
+        }
+
+        return issueBook(
+                reservation.getBook().getId(),
+                reservation.getStudent().getId(),
+                LocalDate.now().plusDays(circulationPolicyService.getMaxLoanDays()),
+                issuerEmail,
+                remarks
+        );
+    }
+
+    @Transactional
     public IssueRecord returnBook(Long issueRecordId) {
         IssueRecord issueRecord = issueRecordRepository.findById(issueRecordId)
                 .orElseThrow(() -> new IllegalArgumentException("Issue record not found."));
@@ -205,7 +248,7 @@ public class IssueService {
         return issueRecordRepository.findActiveIssuesOrdered(List.of(IssueStatus.ISSUED, IssueStatus.OVERDUE)).stream()
                 .sorted(Comparator
                         .comparing(IssueRecord::isReturnRequested).reversed()
-                        .thenComparing(IssueRecord::getDueDate, Comparator.nullsLast(Comparator.naturalOrder())))
+                        .thenComparing(IssueRecord::getIssueDate, Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
     }
 

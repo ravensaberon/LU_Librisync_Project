@@ -53,9 +53,10 @@ public class RegistrationEmailOtpService {
         }
 
         RegistrationEmailOtpSessionState nextState = new RegistrationEmailOtpSessionState();
+        String otpCode = generateOtpCodeAndSend(normalizedEmail);
         nextState.setEmail(normalizedEmail);
         nextState.setMaskedEmail(maskEmail(normalizedEmail));
-        nextState.setOtpHash(hashOtp(generateOtpCodeAndSend(normalizedEmail)));
+        nextState.setOtpHash(hashOtp(otpCode));
         nextState.setExpiresAt(now.plusMinutes(otpValidityMinutes));
         nextState.setResendAvailableAt(now.plusSeconds(resendCooldownSeconds));
         nextState.setVerified(false);
@@ -141,11 +142,14 @@ public class RegistrationEmailOtpService {
 
     private String generateOtpCodeAndSend(String email) {
         String otpCode = String.format("%06d", secureRandom.nextInt(1_000_000));
-        emailNotificationService.sendImmediateHtmlEmail(
+        boolean delivered = emailNotificationService.sendImmediateHtmlEmail(
                 email,
                 "LU Librisync - Registration Email Verification",
                 buildEmailBody(email, otpCode)
         );
+        if (!delivered) {
+            throw new IllegalStateException("Unable to send OTP email right now. Please check the SMTP configuration and try again.");
+        }
         return otpCode;
     }
 

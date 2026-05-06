@@ -43,7 +43,7 @@ public class RegistrationOtpService {
         this.tokenRepository = tokenRepository;
         this.emailNotificationService = emailNotificationService;
         this.resendCooldownSeconds = Math.max(30, resendCooldownSeconds);
-        this.otpValidityMinutes = Math.max(5, otpValidityMinutes);
+        this.otpValidityMinutes = Math.max(3, otpValidityMinutes);
     }
 
     /**
@@ -66,11 +66,14 @@ public class RegistrationOtpService {
         token.setUsed(false);
 
         RegistrationOtpToken saved = tokenRepository.save(token);
-        emailNotificationService.sendImmediateHtmlEmail(
+        boolean delivered = emailNotificationService.sendImmediateHtmlEmail(
                 user.getEmail(),
                 "LU Librisync — Verify Your Email",
                 buildVerificationEmailBody(user, otpCode, saved, temporaryPassword)
         );
+        if (!delivered) {
+            throw new IllegalStateException("Unable to send registration OTP email right now. Please check the SMTP configuration and try again.");
+        }
 
         return toState(saved);
     }

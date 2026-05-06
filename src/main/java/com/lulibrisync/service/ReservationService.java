@@ -47,8 +47,8 @@ public class ReservationService {
                               EmailNotificationService emailNotificationService,
                               AdminNotificationService adminNotificationService,
                               CirculationPolicyService circulationPolicyService,
-                              @org.springframework.beans.factory.annotation.Value("${lulibrisync.reservations.claim-hours:48}") int claimWindowHours,
-                              @org.springframework.beans.factory.annotation.Value("${lulibrisync.reservations.borrow-request-minutes:60}") int borrowRequestWindowMinutes,
+                              @org.springframework.beans.factory.annotation.Value("${lulibrisync.reservations.claim-hours:24}") int claimWindowHours,
+                              @org.springframework.beans.factory.annotation.Value("${lulibrisync.reservations.borrow-request-minutes:30}") int borrowRequestWindowMinutes,
                               @org.springframework.beans.factory.annotation.Value("${lulibrisync.reservations.max-preferred-pickup-days:30}") int maxPreferredPickupDays) {
         this.reservationRepository = reservationRepository;
         this.bookRepository = bookRepository;

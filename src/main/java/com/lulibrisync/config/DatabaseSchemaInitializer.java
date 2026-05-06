@@ -26,6 +26,8 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) throws Exception {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
+            ensureUserNameColumns(statement);
+            ensureStudentReadingHistoryView(statement);
             ensurePreferredPickupDateColumn(statement);
             ensureStudentRegistrationOtpTable(statement);
             ensureStudentPasswordChangeOtpTable(statement);
@@ -33,10 +35,60 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
             ensureIssueReturnRequestColumn(statement);
             ensureAdminNotificationsTable(statement);
             ensureReservationStatusEnumValues(statement);
+            ensureEmailNotificationTypeEnumValues(statement);
             ensureRegistrationOtpTokensTable(statement);
             ensureUserStatusPendingValue(statement);
             ensureMustChangePasswordColumn(statement);
             ensureBookArchiveColumns(statement);
+        }
+    }
+
+    private void ensureUserNameColumns(Statement statement) throws Exception {
+        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'users'")) {
+            if (!tables.next()) {
+                return;
+            }
+        }
+
+        if (!hasColumn(statement, "users", "first_name")) {
+            statement.executeUpdate("ALTER TABLE users ADD COLUMN first_name VARCHAR(50) NULL AFTER id");
+        }
+        if (!hasColumn(statement, "users", "middle_name")) {
+            statement.executeUpdate("ALTER TABLE users ADD COLUMN middle_name VARCHAR(50) NULL AFTER first_name");
+        }
+        if (!hasColumn(statement, "users", "last_name")) {
+            statement.executeUpdate("ALTER TABLE users ADD COLUMN last_name VARCHAR(50) NULL AFTER middle_name");
+        }
+        if (!hasColumn(statement, "users", "suffix")) {
+            statement.executeUpdate("ALTER TABLE users ADD COLUMN suffix VARCHAR(20) NULL AFTER last_name");
+        }
+
+        boolean hasLegacyNameColumn = hasColumn(statement, "users", "name");
+        if (hasLegacyNameColumn) {
+            statement.executeUpdate(
+                    "UPDATE users "
+                            + "SET first_name = COALESCE(NULLIF(TRIM(first_name), ''), TRIM(SUBSTRING_INDEX(TRIM(name), ' ', 1))) "
+                            + "WHERE name IS NOT NULL AND TRIM(name) <> ''"
+            );
+            statement.executeUpdate(
+                    "UPDATE users "
+                            + "SET last_name = COALESCE(NULLIF(TRIM(last_name), ''), "
+                            + "TRIM(CASE WHEN INSTR(TRIM(name), ' ') > 0 "
+                            + "THEN SUBSTRING(TRIM(name), INSTR(TRIM(name), ' ') + 1) ELSE '' END)) "
+                            + "WHERE name IS NOT NULL AND TRIM(name) <> ''"
+            );
+        }
+
+        statement.executeUpdate("UPDATE users SET first_name = 'Library' WHERE first_name IS NULL OR TRIM(first_name) = ''");
+        statement.executeUpdate("UPDATE users SET last_name = 'User' WHERE last_name IS NULL OR TRIM(last_name) = ''");
+        statement.executeUpdate("ALTER TABLE users MODIFY COLUMN first_name VARCHAR(50) NOT NULL");
+        statement.executeUpdate("ALTER TABLE users MODIFY COLUMN middle_name VARCHAR(50) NULL");
+        statement.executeUpdate("ALTER TABLE users MODIFY COLUMN last_name VARCHAR(50) NOT NULL");
+        statement.executeUpdate("ALTER TABLE users MODIFY COLUMN suffix VARCHAR(20) NULL");
+
+        if (hasLegacyNameColumn) {
+            statement.executeUpdate("ALTER TABLE users DROP COLUMN name");
+            logger.info("Migrated users.name into first_name/middle_name/last_name/suffix and removed the legacy column.");
         }
     }
 
@@ -202,6 +254,48 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
         logger.info("Ensured registration_otp_tokens table exists for email verification.");
     }
 
+    private void ensureStudentReadingHistoryView(Statement statement) throws Exception {
+        statement.executeUpdate(
+                "CREATE OR REPLACE VIEW vw_student_reading_history AS "
+                        + "SELECT s.student_id, "
+                        + "TRIM(CONCAT_WS(' ', u.first_name, NULLIF(u.middle_name, ''), u.last_name, NULLIF(u.suffix, ''))) AS student_name, "
+                        + "b.title AS book_title, "
+                        + "i.issue_date, "
+                        + "i.due_date, "
+                        + "i.return_date, "
+                        + "i.status, "
+                        + "i.fine_amount "
+                        + "FROM issue_records i "
+                        + "JOIN students s ON s.id = i.student_id "
+                        + "JOIN users u ON u.id = s.user_id "
+                        + "JOIN books b ON b.id = i.book_id"
+        );
+    }
+
+    private void ensureEmailNotificationTypeEnumValues(Statement statement) throws Exception {
+        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'email_notifications'")) {
+            if (!tables.next()) {
+                return;
+            }
+        }
+
+        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM email_notifications LIKE 'notification_type'")) {
+            if (columns.next()) {
+                String columnType = columns.getString("Type");
+                if (columnType != null && columnType.contains("UNPAID_FINE")) {
+                    return;
+                }
+            }
+        }
+
+        statement.executeUpdate(
+                "ALTER TABLE email_notifications MODIFY COLUMN notification_type "
+                        + "ENUM('DUE_REMINDER','DUE_REMINDER_3_DAYS','DUE_REMINDER_1_DAY','DUE_REMINDER_ON_DATE','RESERVATION_READY','RESERVATION_EXPIRED','UNPAID_FINE','PASSWORD_RESET') "
+                        + "NOT NULL"
+        );
+        logger.info("Updated email_notifications.notification_type enum to include reservation and fine notification values.");
+    }
+
     private void ensureUserStatusPendingValue(Statement statement) throws Exception {
         try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM users LIKE 'status'")) {
             if (columns.next()) {
@@ -249,5 +343,11 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
         }
 
         statement.executeUpdate("UPDATE books SET is_visible_in_catalog = FALSE WHERE is_archived = TRUE");
+    }
+
+    private boolean hasColumn(Statement statement, String tableName, String columnName) throws Exception {
+        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM " + tableName + " LIKE '" + columnName + "'")) {
+            return columns.next();
+        }
     }
 }

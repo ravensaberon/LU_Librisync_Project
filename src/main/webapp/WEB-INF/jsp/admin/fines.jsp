@@ -55,7 +55,7 @@
         </div>
     </section>
 
-    <section class="stat-grid mb-4">
+    <section class="stat-grid fines-stat-grid mb-4">
         <div class="metric-card">
             <div class="metric-value">${outstandingFineCount}</div>
             <div class="metric-label">Unpaid fine records</div>

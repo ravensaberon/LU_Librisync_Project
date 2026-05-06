@@ -129,7 +129,7 @@ public class AuthService {
         String normalizedProvince = validateProvince(province);
         String normalizedCityMunicipality = validateCityMunicipality(cityMunicipality);
         String normalizedBarangay = validateBarangayForCityMunicipality(normalizedCityMunicipality, barangay);
-        String normalizedStreet = normalizeAndValidateAddressPart(street, "Street", 180);
+        String normalizedStreet = hasText(street) ? normalizeAndValidateAddressPart(street, "Street", 180) : "";
         String normalizedZipCode = validateZipCode(zipcode, normalizedCityMunicipality);
         validateTerms(agreed);
 
@@ -148,7 +148,6 @@ public class AuthService {
         user.setRole(Role.STUDENT);
         user.setStatus(activateImmediately ? UserStatus.ACTIVE : UserStatus.PENDING);
         user.setStudentId(generatedStudentId);
-        user.setMustChangePassword(true);
         userRepository.save(user);
 
         Student student = new Student();
@@ -266,7 +265,7 @@ public class AuthService {
         String normalizedProvince = validateProvince(hasText(province) ? province : "Laguna");
         String normalizedCityMunicipality = validateCityMunicipality(cityMunicipality);
         String normalizedBarangay = validateBarangayForCityMunicipality(normalizedCityMunicipality, barangay);
-        String normalizedStreet = normalizeAndValidateAddressPart(street, "Street", 180);
+        String normalizedStreet = hasText(street) ? normalizeAndValidateAddressPart(street, "Street", 180) : "";
         String normalizedZipCode = validateZipCode(zipcode, normalizedCityMunicipality);
         return buildAddress(normalizedStreet, normalizedBarangay, normalizedCityMunicipality, normalizedProvince, normalizedZipCode);
     }
@@ -619,7 +618,8 @@ public class AuthService {
                                 String cityMunicipality,
                                 String province,
                                 String zipcode) {
-        return street + ", " + barangay + ", " + cityMunicipality + ", " + province + " " + zipcode;
+        String prefix = (street == null || street.isBlank()) ? "" : street + ", ";
+        return prefix + barangay + ", " + cityMunicipality + ", " + province + " " + zipcode;
     }
 
     private boolean hasText(String value) {
@@ -670,21 +670,10 @@ public class AuthService {
                                              String lastName,
                                              LocalDate birthDate,
                                              String studentId) {
-        String firstToken = stripToLetters(firstName);
         String lastToken = stripToLetters(lastName);
-        String firstChunk = firstToken.isBlank() ? "Stu" : capitalize(firstToken.substring(0, Math.min(3, firstToken.length())));
-        String lastChunk = lastToken.isBlank() ? "Acc" : capitalize(lastToken.substring(0, Math.min(2, lastToken.length())));
-        String birthChunk = birthDate == null ? "0101" : String.format("%02d%02d", birthDate.getMonthValue(), birthDate.getDayOfMonth());
-        String studentDigits = studentId == null ? "0000" : studentId.replaceAll("\\D", "");
-        String studentChunk = studentDigits.length() >= 4
-                ? studentDigits.substring(studentDigits.length() - 4)
-                : String.format("%4s", studentDigits).replace(' ', '0');
-
-        String generatedPassword = firstChunk + lastChunk + birthChunk + "!" + studentChunk + "Lu";
-        if (COMMON_PASSWORDS.contains(generatedPassword.toLowerCase(Locale.ROOT)) || hasRepeatedSequence(generatedPassword, 4)) {
-            generatedPassword = firstChunk + "Lu!" + studentChunk + birthChunk + "X9";
-        }
-        return generatedPassword;
+        String lastChunk = lastToken.isBlank() ? "Student" : capitalize(lastToken);
+        String birthYear = birthDate == null ? String.valueOf(LocalDate.now().getYear()) : String.valueOf(birthDate.getYear());
+        return lastChunk + birthYear;
     }
 
     private String stripToLetters(String value) {

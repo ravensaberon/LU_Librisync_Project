@@ -245,6 +245,348 @@ window.LuLibrisyncAddress = (function () {
 })();
 
 (function () {
+    var titleSelectors = [
+        ".brand-title",
+        ".section-title",
+        ".hero-side-title",
+        ".metric-label",
+        ".info-tile-label",
+        ".chart-summary-label",
+        ".insight-panel-title",
+        ".modal-kicker",
+        ".shell-brand-kicker",
+        ".shell-brand-title",
+        ".shell-panel-kicker",
+        ".shell-panel-title",
+        ".auth-panel-title",
+        ".catalog-title",
+        ".landing-title",
+        ".profile-hero-title",
+        ".dashboard-tab-button span",
+        ".support-item strong",
+        ".form-label",
+        ".hero-card h1",
+        ".hero-card h2",
+        ".hero-card h3",
+        "thead th"
+    ];
+
+    var minorWords = {
+        a: true,
+        an: true,
+        and: true,
+        as: true,
+        at: true,
+        but: true,
+        by: true,
+        for: true,
+        in: true,
+        nor: true,
+        of: true,
+        on: true,
+        or: true,
+        per: true,
+        the: true,
+        to: true,
+        with: true
+    };
+
+    function preserveAcronym(word) {
+        return /^[A-Z0-9]{2,4}$/.test(word);
+    }
+
+    function formatWord(word, isBoundaryWord) {
+        if (!/[A-Za-z]/.test(word)) {
+            return word;
+        }
+
+        if (preserveAcronym(word)) {
+            return word;
+        }
+
+        var match = word.match(/^([^A-Za-z0-9]*)(.*?)([^A-Za-z0-9]*)$/);
+        if (!match) {
+            return word;
+        }
+
+        var leading = match[1] || "";
+        var core = match[2] || "";
+        var trailing = match[3] || "";
+
+        if (!core) {
+            return word;
+        }
+
+        var transformedCore = core.split(/([/-])/).map(function (part) {
+            if (part === "/" || part === "-") {
+                return part;
+            }
+
+            if (preserveAcronym(part)) {
+                return part;
+            }
+
+            var lowerPart = part.toLowerCase();
+            if (!isBoundaryWord && minorWords[lowerPart]) {
+                return lowerPart;
+            }
+
+            return lowerPart.charAt(0).toUpperCase() + lowerPart.slice(1);
+        }).join("");
+
+        return leading + transformedCore + trailing;
+    }
+
+    function toDisplayTitleCase(text) {
+        if (!text || !text.trim()) {
+            return text;
+        }
+
+        var parts = text.split(/(\s+)/);
+        var wordIndexes = [];
+
+        parts.forEach(function (part, index) {
+            if (part && part.trim() && /[A-Za-z]/.test(part)) {
+                wordIndexes.push(index);
+            }
+        });
+
+        if (!wordIndexes.length) {
+            return text;
+        }
+
+        var firstWordIndex = wordIndexes[0];
+        var lastWordIndex = wordIndexes[wordIndexes.length - 1];
+
+        return parts.map(function (part, index) {
+            if (!part || /^\s+$/.test(part)) {
+                return part;
+            }
+
+            return formatWord(part, index === firstWordIndex || index === lastWordIndex);
+        }).join("");
+    }
+
+    document.querySelectorAll(titleSelectors.join(",")).forEach(function (node) {
+        if (node.hasAttribute("data-title-case-skip")) {
+            return;
+        }
+
+        var rawText = node.textContent;
+        if (!rawText || !rawText.trim()) {
+            return;
+        }
+
+        node.textContent = toDisplayTitleCase(rawText);
+    });
+})();
+
+(function () {
+    var monthPattern = "(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)";
+    var dateTimePattern = new RegExp("^(" + monthPattern + "\\s+\\d{1,2},\\s+\\d{4})\\s+(\\d{1,2}:\\d{2}\\s*[AP]M)$", "i");
+
+    function hasRenderableTextOnly(cell) {
+        return Array.prototype.every.call(cell.childNodes, function (node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                return true;
+            }
+            return node.nodeType === Node.ELEMENT_NODE && node.tagName === "BR";
+        });
+    }
+
+    document.querySelectorAll("table tbody td").forEach(function (cell) {
+        if (!cell || cell.querySelector(".table-datetime")) {
+            return;
+        }
+
+        if (!hasRenderableTextOnly(cell)) {
+            return;
+        }
+
+        var rawText = (cell.textContent || "").replace(/\s+/g, " ").trim();
+        if (!rawText) {
+            return;
+        }
+
+        var match = rawText.match(dateTimePattern);
+        if (!match) {
+            return;
+        }
+
+        var stack = document.createElement("span");
+        stack.className = "table-datetime";
+
+        var dateLine = document.createElement("span");
+        dateLine.className = "table-datetime-date";
+        dateLine.textContent = match[1];
+
+        var timeLine = document.createElement("span");
+        timeLine.className = "table-datetime-time";
+        timeLine.textContent = match[2].replace(/\s+/g, " ").trim();
+
+        stack.appendChild(dateLine);
+        stack.appendChild(timeLine);
+        cell.textContent = "";
+        cell.appendChild(stack);
+    });
+})();
+
+(function () {
+    var sections = document.querySelectorAll("[data-table-search-section]");
+    if (!sections.length) {
+        return;
+    }
+
+    function clearMarks(container) {
+        container.querySelectorAll("mark.table-search-mark").forEach(function (mark) {
+            var parent = mark.parentNode;
+            if (!parent) {
+                return;
+            }
+            parent.replaceChild(document.createTextNode(mark.textContent), mark);
+            parent.normalize();
+        });
+    }
+
+    function highlightElement(container, query) {
+        if (!container || !query) {
+            return;
+        }
+
+        var lowerQuery = query.toLowerCase();
+        var walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+            acceptNode: function (node) {
+                if (!node.nodeValue || !node.nodeValue.trim()) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                if (node.parentElement && node.parentElement.closest("mark.table-search-mark")) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                if (node.parentElement && /^(SCRIPT|STYLE|NOSCRIPT)$/i.test(node.parentElement.tagName)) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+                return NodeFilter.FILTER_ACCEPT;
+            }
+        });
+
+        var textNodes = [];
+        var currentNode = walker.nextNode();
+        while (currentNode) {
+            textNodes.push(currentNode);
+            currentNode = walker.nextNode();
+        }
+
+        textNodes.forEach(function (textNode) {
+            var value = textNode.nodeValue;
+            var lowerValue = value.toLowerCase();
+            var matchIndex = lowerValue.indexOf(lowerQuery);
+            if (matchIndex === -1) {
+                return;
+            }
+
+            var fragment = document.createDocumentFragment();
+            var cursor = 0;
+
+            while (matchIndex !== -1) {
+                if (matchIndex > cursor) {
+                    fragment.appendChild(document.createTextNode(value.slice(cursor, matchIndex)));
+                }
+
+                var mark = document.createElement("mark");
+                mark.className = "table-search-mark";
+                mark.textContent = value.slice(matchIndex, matchIndex + query.length);
+                fragment.appendChild(mark);
+
+                cursor = matchIndex + query.length;
+                matchIndex = lowerValue.indexOf(lowerQuery, cursor);
+            }
+
+            if (cursor < value.length) {
+                fragment.appendChild(document.createTextNode(value.slice(cursor)));
+            }
+
+            if (textNode.parentNode) {
+                textNode.parentNode.replaceChild(fragment, textNode);
+            }
+        });
+    }
+
+    sections.forEach(function (section) {
+        var input = section.querySelector("[data-table-search-input]");
+        var table = section.querySelector("[data-table-search-table]");
+        var inputShell = input ? input.closest(".table-search-shell") : null;
+        var tbody = table ? table.tBodies[0] : null;
+
+        if (!input || !table || !tbody) {
+            return;
+        }
+
+        var allRows = Array.prototype.slice.call(tbody.querySelectorAll("tr"));
+        var dataRows = allRows.filter(function (row) {
+            return !(row.cells.length === 1 && row.cells[0].hasAttribute("colspan"));
+        });
+
+        if (!dataRows.length) {
+            input.disabled = true;
+            if (inputShell) {
+                inputShell.hidden = true;
+            }
+            return;
+        }
+
+        if (inputShell) {
+            inputShell.hidden = false;
+        }
+
+        var emptyMessage = section.getAttribute("data-table-search-empty") || "No matches found on this page.";
+        var emptyRow = document.createElement("tr");
+        emptyRow.className = "table-search-empty-row";
+        emptyRow.hidden = true;
+
+        var emptyCell = document.createElement("td");
+        emptyCell.colSpan = table.querySelectorAll("thead th").length || 1;
+        emptyCell.textContent = emptyMessage;
+        emptyRow.appendChild(emptyCell);
+        tbody.appendChild(emptyRow);
+
+        function applySearch() {
+            var query = (input.value || "").trim();
+            var lowerQuery = query.toLowerCase();
+            var visibleCount = 0;
+
+            dataRows.forEach(function (row) {
+                row.classList.remove("table-search-row-match");
+                Array.prototype.forEach.call(row.cells, function (cell) {
+                    clearMarks(cell);
+                });
+
+                if (!lowerQuery) {
+                    row.hidden = false;
+                    visibleCount++;
+                    return;
+                }
+
+                var rowText = (row.textContent || "").toLowerCase();
+                var isMatch = rowText.indexOf(lowerQuery) !== -1;
+                row.hidden = !isMatch;
+
+                if (isMatch) {
+                    row.classList.add("table-search-row-match");
+                    Array.prototype.forEach.call(row.cells, function (cell) {
+                        highlightElement(cell, query);
+                    });
+                    visibleCount++;
+                }
+            });
+
+            emptyRow.hidden = visibleCount !== 0 || !lowerQuery;
+        }
+
+        input.addEventListener("input", applySearch);
+    });
+})();
+
+(function () {
     var pageShell = document.querySelector(".page-shell");
     var sidebar = pageShell ? pageShell.querySelector(".app-nav") : null;
     var assetBaseUrl = resolveAppBaseUrl();
@@ -1073,16 +1415,15 @@ window.LuLibrisyncAddress = (function () {
 
             var otpPanelMarkup = "";
             if (state.hasPendingOtp || state.verified) {
+                var otpPanelDetailMarkup = state.verified
+                    ? ""
+                    : '<div class="small muted-text">Resend code in <strong id="studentPasswordOtpResend">calculating...</strong></div>';
                 otpPanelMarkup =
                     '<div class="otp-panel mb-3">' +
                     '  <div class="otp-panel-icon">' + getShellIcon("shield") + "</div>" +
                     "  <div>" +
                     "    <strong>" + escapeHtml(state.maskedEmail || "Registered email") + "</strong>" +
-                    '    <div class="small muted-text">' +
-                    '      OTP expires in <strong id="studentPasswordOtpExpiry">calculating...</strong>' +
-                    '      <span class="mx-1">|</span>' +
-                    '      New OTP in <strong id="studentPasswordOtpResend">calculating...</strong>' +
-                    "    </div>" +
+                    otpPanelDetailMarkup +
                     "  </div>" +
                     "</div>";
             }
@@ -1105,11 +1446,17 @@ window.LuLibrisyncAddress = (function () {
                 passwordFormMarkup =
                     '<div class="mb-3">' +
                     '  <label class="form-label" for="studentPasswordNew">New password</label>' +
-                    '  <input class="form-control form-control-lg" id="studentPasswordNew" type="password" placeholder="Enter new password">' +
+                    '  <div class="auth-input-shell">' +
+                    '    <input class="form-control form-control-lg" id="studentPasswordNew" type="password" placeholder="Enter new password">' +
+                    '    <button class="auth-password-toggle" type="button" data-password-toggle data-target="studentPasswordNew" aria-label="Show password">' + getShellIcon("eye") + "</button>" +
+                    "  </div>" +
                     "</div>" +
                     '<div class="mb-3">' +
                     '  <label class="form-label" for="studentPasswordConfirm">Confirm new password</label>' +
-                    '  <input class="form-control form-control-lg" id="studentPasswordConfirm" type="password" placeholder="Confirm new password">' +
+                    '  <div class="auth-input-shell">' +
+                    '    <input class="form-control form-control-lg" id="studentPasswordConfirm" type="password" placeholder="Confirm new password">' +
+                    '    <button class="auth-password-toggle" type="button" data-password-toggle data-target="studentPasswordConfirm" aria-label="Show password">' + getShellIcon("eye") + "</button>" +
+                    "  </div>" +
                     "</div>" +
                     '<button class="btn btn-brand w-100" type="button" id="studentPasswordUpdateButton">Update password</button>';
             }
@@ -1132,13 +1479,9 @@ window.LuLibrisyncAddress = (function () {
         }
 
         function updatePasswordModalCountdowns() {
-            var expiryLabel = document.getElementById("studentPasswordOtpExpiry");
             var resendLabel = document.getElementById("studentPasswordOtpResend");
             var resendButton = document.getElementById("studentPasswordResendOtpButton");
 
-            if (expiryLabel) {
-                expiryLabel.textContent = formatCountdown(state.expiresAtEpochMs);
-            }
             if (resendLabel) {
                 resendLabel.textContent = formatCountdown(state.resendAvailableAtEpochMs);
             }
@@ -1152,6 +1495,21 @@ window.LuLibrisyncAddress = (function () {
             var resendButton = document.getElementById("studentPasswordResendOtpButton");
             var verifyButton = document.getElementById("studentPasswordVerifyOtpButton");
             var updateButton = document.getElementById("studentPasswordUpdateButton");
+
+            document.querySelectorAll("[data-password-toggle]").forEach(function (toggleButton) {
+                toggleButton.addEventListener("click", function () {
+                    var targetId = toggleButton.getAttribute("data-target");
+                    var targetInput = targetId ? document.getElementById(targetId) : null;
+                    if (!targetInput) {
+                        return;
+                    }
+
+                    var showPassword = targetInput.type === "password";
+                    targetInput.type = showPassword ? "text" : "password";
+                    toggleButton.setAttribute("aria-label", showPassword ? "Hide password" : "Show password");
+                    toggleButton.innerHTML = showPassword ? getShellIcon("eye-off") : getShellIcon("eye");
+                });
+            });
 
             if (requestButton) {
                 requestButton.addEventListener("click", function () {
@@ -1458,6 +1816,8 @@ window.LuLibrisyncAddress = (function () {
             history: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"></path><path d="M3.05 13A9 9 0 1 0 6 6.3L3 8"></path><path d="M12 7v5l4 2"></path></svg>',
             profile: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="4"></circle></svg>',
             shield: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>',
+            eye: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>',
+            "eye-off": '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 18 18"></path><path d="M10.6 10.6a3 3 0 0 0 4.24 4.24"></path><path d="M9.88 5.09A10.94 10.94 0 0 1 12 5c6.5 0 10 7 10 7a13.16 13.16 0 0 1-3.01 3.73"></path><path d="M6.61 6.61C3.73 8.57 2 12 2 12a13.1 13.1 0 0 0 10 7 10.9 10.9 0 0 0 5.23-1.17"></path></svg>',
             logout: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"></path><path d="M18.36 5.64a9 9 0 1 1-12.72 0"></path></svg>',
             alert: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>',
             check: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 6-11 11-5-5"></path></svg>'

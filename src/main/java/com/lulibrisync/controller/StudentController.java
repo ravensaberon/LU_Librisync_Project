@@ -181,14 +181,20 @@ public class StudentController {
                                           @RequestParam(required = false) String confirmPassword,
                                           HttpSession session,
                                           RedirectAttributes redirectAttributes) {
+        // If both fields are blank the student chose to keep the generated password — skip to dashboard
+        boolean skipped = (newPassword == null || newPassword.isBlank())
+                && (confirmPassword == null || confirmPassword.isBlank());
+        if (skipped) {
+            session.removeAttribute(REGISTRATION_TEMP_PASSWORD_SESSION_KEY);
+            return "redirect:/student/dashboard";
+        }
         try {
             studentService.completeRequiredPasswordChange(authentication.getName(), newPassword, confirmPassword);
             session.removeAttribute(REGISTRATION_TEMP_PASSWORD_SESSION_KEY);
-            redirectAttributes.addFlashAttribute("success", "Password updated. You can now continue using your account.");
+            redirectAttributes.addFlashAttribute("success", "Password updated successfully.");
             return "redirect:/student/dashboard";
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
-            redirectAttributes.addFlashAttribute("mustChangePassword", true);
             return "redirect:/student/password/change-temporary";
         }
     }
@@ -230,7 +236,10 @@ public class StudentController {
 
     @PostMapping("/student/profile/request-otp")
     public String requestProfileUpdateOtp(Authentication authentication,
-                                          @RequestParam String name,
+                                          @RequestParam String firstName,
+                                          @RequestParam(required = false) String middleName,
+                                          @RequestParam String lastName,
+                                          @RequestParam(required = false) String suffix,
                                           @RequestParam(required = false) String course,
                                           @RequestParam(required = false) String yearLevel,
                                           @RequestParam(required = false) String phone,
@@ -242,7 +251,17 @@ public class StudentController {
                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateOfBirth,
                                           RedirectAttributes redirectAttributes) {
         Student student = studentService.getStudentByEmail(authentication.getName());
-        StudentProfileUpdateRequest submittedRequest = new StudentProfileUpdateRequest(name, course, yearLevel, phone, null, dateOfBirth);
+        StudentProfileUpdateRequest submittedRequest = new StudentProfileUpdateRequest(
+                firstName,
+                middleName,
+                lastName,
+                suffix,
+                course,
+                yearLevel,
+                phone,
+                null,
+                dateOfBirth
+        );
 
         try {
             submittedRequest.setAddress(authService.normalizeAndBuildOptionalAddress(province, cityMunicipality, barangay, street, zipcode));
@@ -257,6 +276,11 @@ public class StudentController {
                 redirectAttributes.addFlashAttribute("error", "Unable to send OTP email right now.");
             }
         } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("profileForm", submittedRequest);
+            applyAddressFlashAttributes("profile", province, cityMunicipality, barangay, street, zipcode, redirectAttributes);
+            redirectAttributes.addFlashAttribute("openEditModal", true);
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("profileForm", submittedRequest);
             applyAddressFlashAttributes("profile", province, cityMunicipality, barangay, street, zipcode, redirectAttributes);
             redirectAttributes.addFlashAttribute("openEditModal", true);
@@ -281,6 +305,9 @@ public class StudentController {
                 redirectAttributes.addFlashAttribute("error", "Unable to send OTP email right now.");
             }
         } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("openEditModal", true);
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (IllegalStateException exception) {
             redirectAttributes.addFlashAttribute("openEditModal", true);
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         }
@@ -352,11 +379,13 @@ public class StudentController {
             } else if (dispatchResult.isDelivered()) {
                 response.put("message", "An OTP has been sent to your registered email.");
             } else {
-                response.put("message", "Unable to send OTP email right now.");
+                response.put("message", "OTP generated but email delivery failed. Check the outbox folder or contact your administrator.");
             }
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException exception) {
             return buildPasswordErrorResponse(exception.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (IllegalStateException exception) {
+            return buildPasswordErrorResponse(exception.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
         }
     }
 
@@ -375,11 +404,13 @@ public class StudentController {
             } else if (dispatchResult.isDelivered()) {
                 response.put("message", "A new OTP has been sent to your registered email.");
             } else {
-                response.put("message", "Unable to send OTP email right now.");
+                response.put("message", "OTP generated but email delivery failed. Check the outbox folder or contact your administrator.");
             }
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException exception) {
             return buildPasswordErrorResponse(exception.getMessage(), HttpStatus.BAD_REQUEST);
+        } catch (IllegalStateException exception) {
+            return buildPasswordErrorResponse(exception.getMessage(), HttpStatus.SERVICE_UNAVAILABLE);
         }
     }
 
