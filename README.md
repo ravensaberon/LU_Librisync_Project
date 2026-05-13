@@ -36,7 +36,7 @@ Implemented now:
 
 - Core admin and student web flow
 - Database-first JPA mapping based on the existing schema
-- Legacy-friendly login that still accepts the plain-text demo passwords from `database/sample-data.sql`
+- Legacy-friendly login that still accepts the plain-text demo passwords from `database/demo-data.sql`
 - Reservation management for students and admins
 - Automatic reminder scheduling for due dates and ready reservations
 - Storage-backed digital library module for PDF resources
@@ -53,6 +53,8 @@ Planned next:
 
 ## Project Structure
 
+- `docs/PROJECT_STRUCTURE.md`
+  Presentation-friendly map of the whole codebase
 - `src/main/java/com/lulibrisync/config`
   Security and authentication setup
 - `src/main/java/com/lulibrisync/controller`
@@ -71,14 +73,14 @@ Planned next:
   JSP views
 - `database/schema.sql`
   MySQL schema
-- `database/sample-data.sql`
+- `database/demo-data.sql`
   Demo data
 
 ## Database Setup In MySQL Workbench
 
 1. Open MySQL Workbench and connect to your local MySQL server.
 2. Run `database/schema.sql`.
-3. Run `database/sample-data.sql`.
+3. Run `database/demo-data.sql`.
 4. Confirm that the database name is `lu_librisync`.
 
 ## Local Requirements
@@ -120,7 +122,7 @@ $env:LU_LIBRISYNC_DB_PASSWORD="your_mysql_password"
 2. Start the app:
 
 ```powershell
-.\tools\apache-maven-3.9.14\bin\mvn.cmd -Dmaven.repo.local=.\.m2\repository spring-boot:run
+mvn -Dmaven.repo.local=.\.m2\repository spring-boot:run
 ```
 
 3. Open:
@@ -139,7 +141,7 @@ http://localhost:8080
 
 - New registrations are stored using BCrypt-ready password hashing.
 - Existing sample users can still log in because the app accepts legacy plain-text seed passwords for migration compatibility.
-- A local Maven runtime is included under `tools/apache-maven-3.9.14` for this workspace setup.
+- The startup script uses a project-local Maven runtime if present, then falls back to Maven from your system `PATH`.
 - PDF uploads are stored under `storage/ebooks` by default, or under `LU_LIBRISYNC_STORAGE_ROOT` if that environment variable is set.
 - Email reminders and profile OTP messages are configured to use `lulibrisync@gmail.com` as the default sender identity.
 - For real Gmail delivery, set `LU_LIBRISYNC_SMTP_PASSWORD` to the Gmail App Password for `lulibrisync@gmail.com`. You can optionally override `LU_LIBRISYNC_SMTP_HOST`, `LU_LIBRISYNC_SMTP_PORT`, `LU_LIBRISYNC_SMTP_USERNAME`, `LU_LIBRISYNC_SMTP_FROM`, and `LU_LIBRISYNC_SMTP_SSL` as needed.
@@ -147,4 +149,4 @@ http://localhost:8080
 - Student profile OTPs are persisted in the database with a 3-minute resend cooldown, so they remain active even after logout/login until they expire or are used.
 - Forgot password now uses persistent OTP records in `password_reset_tokens`, with the same 3-minute resend countdown and database-backed recovery flow.
 - Demo admin, student accounts, and starter catalog data are auto-seeded at startup when `admin@lulibrisync.edu` is missing from the connected database. Disable this by setting `LU_LIBRISYNC_DEMO_DATA_ENABLED=false`.
-- Re-run `database/schema.sql` after pulling the latest changes so the `audit_logs` table, `student_profile_otp_requests` table, and contact-number uniqueness rules are available in MySQL.
+- Re-run `database/schema.sql` for a fresh database. For existing local databases, the app also applies compatibility fixes at startup through `DatabaseSchemaInitializer`.

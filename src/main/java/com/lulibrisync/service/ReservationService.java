@@ -238,6 +238,7 @@ public class ReservationService {
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("Book not found."));
         Student student = studentService.getStudentByEmail(email);
+        LocalDate normalizedPreferredPickupDate = normalizePreferredPickupDate(preferredPickupDate);
         circulationPolicyService.validateBorrowingEligibility(student);
         if (issueRecordRepository.existsByBook_IdAndStudent_IdAndStatusIn(bookId, student.getId(), List.of(IssueStatus.ISSUED, IssueStatus.OVERDUE))) {
             throw new IllegalArgumentException("You already have this book on loan.");
@@ -252,7 +253,7 @@ public class ReservationService {
         reservation.setRequestType(ReservationRequestType.RESERVATION);
         reservation.setStatus(ReservationStatus.PENDING);
         reservation.setReservedAt(LocalDateTime.now());
-        reservation.setPreferredPickupDate(null);
+        reservation.setPreferredPickupDate(normalizedPreferredPickupDate);
         reservation.setQueuePosition((int) reservationRepository.countByBook_IdAndStatusInAndRequestType(bookId, ACTIVE_STATUSES, ReservationRequestType.RESERVATION) + 1);
 
         Reservation savedReservation = reservationRepository.save(reservation);
@@ -541,6 +542,20 @@ public class ReservationService {
     private boolean isReadyForPickup(Reservation reservation) {
         LocalDate preferredPickupDate = reservation.getPreferredPickupDate();
         return preferredPickupDate == null || !preferredPickupDate.isAfter(LocalDate.now());
+    }
+
+    private LocalDate normalizePreferredPickupDate(LocalDate preferredPickupDate) {
+        if (preferredPickupDate == null) {
+            return null;
+        }
+        LocalDate today = LocalDate.now();
+        if (preferredPickupDate.isBefore(today)) {
+            throw new IllegalArgumentException("Preferred pickup date cannot be in the past.");
+        }
+        if (preferredPickupDate.isAfter(today.plusDays(maxPreferredPickupDays))) {
+            throw new IllegalArgumentException("Preferred pickup date is too far ahead.");
+        }
+        return preferredPickupDate;
     }
 
     private LocalDate resolvePriorityDate(Reservation reservation) {

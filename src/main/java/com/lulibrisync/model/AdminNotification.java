@@ -17,7 +17,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "admin_notifications")
+@Table(name = "user_notifications")
 public class AdminNotification {
 
     @Id
@@ -25,8 +25,8 @@ public class AdminNotification {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "admin_user_id", nullable = false)
-    private User adminUser;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "notification_type", nullable = false, length = 30)
@@ -38,7 +38,7 @@ public class AdminNotification {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    @Column(name = "link_url", length = 255)
+    @Column(name = "link_url", length = 200)
     private String linkUrl;
 
     @Column(name = "is_read", nullable = false)
@@ -63,12 +63,12 @@ public class AdminNotification {
         this.id = id;
     }
 
-    public User getAdminUser() {
-        return adminUser;
+    public User getUser() {
+        return user;
     }
 
-    public void setAdminUser(User adminUser) {
-        this.adminUser = adminUser;
+    public void setUser(User user) {
+        this.user = user;
     }
 
     public AdminNotificationType getNotificationType() {

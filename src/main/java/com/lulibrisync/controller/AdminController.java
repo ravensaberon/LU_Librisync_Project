@@ -4,13 +4,11 @@ import com.lulibrisync.dto.BorrowerStanding;
 import com.lulibrisync.model.Fine;
 import com.lulibrisync.model.IssueRecord;
 import com.lulibrisync.model.IssueStatus;
-import com.lulibrisync.model.Role;
 import com.lulibrisync.model.Student;
 import com.lulibrisync.model.User;
 import com.lulibrisync.model.UserStatus;
 import com.lulibrisync.repository.BookRepository;
 import com.lulibrisync.repository.IssueRecordRepository;
-import com.lulibrisync.repository.UserRepository;
 import com.lulibrisync.service.AuditLogService;
 import com.lulibrisync.service.AdminService;
 import com.lulibrisync.service.AdminNotificationService;
@@ -47,7 +45,6 @@ public class AdminController {
     private static final int STUDENT_DIRECTORY_PAGE_SIZE = 10;
 
     private final BookRepository bookRepository;
-    private final UserRepository userRepository;
     private final IssueRecordRepository issueRecordRepository;
     private final IssueService issueService;
     private final StudentService studentService;
@@ -59,7 +56,6 @@ public class AdminController {
     private final AuditLogService auditLogService;
 
     public AdminController(BookRepository bookRepository,
-                           UserRepository userRepository,
                            IssueRecordRepository issueRecordRepository,
                            IssueService issueService,
                            StudentService studentService,
@@ -70,7 +66,6 @@ public class AdminController {
                            FineService fineService,
                            AuditLogService auditLogService) {
         this.bookRepository = bookRepository;
-        this.userRepository = userRepository;
         this.issueRecordRepository = issueRecordRepository;
         this.issueService = issueService;
         this.studentService = studentService;
@@ -102,7 +97,7 @@ public class AdminController {
 
         model.addAttribute("bookCount", bookRepository.count());
         model.addAttribute("availableCount", bookRepository.countByAvailableQuantityGreaterThan(0));
-        model.addAttribute("studentCount", userRepository.countByRole(Role.STUDENT));
+        model.addAttribute("studentCount", studentService.countActiveStudents());
         model.addAttribute("issuedCount", issuedCount);
         model.addAttribute("overdueCount", overdueCount);
         model.addAttribute("overdueRate", (issuedCount + overdueCount) == 0 ? 0 : (overdueCount * 100) / (issuedCount + overdueCount));
@@ -448,7 +443,7 @@ public class AdminController {
         model.addAttribute("adminUser", admin);
         model.addAttribute("transactionsManaged", issueService.countTransactionsManagedBy(authentication.getName()));
         model.addAttribute("activeCirculation", issueRecordRepository.countByStatus(IssueStatus.ISSUED) + issueRecordRepository.countByStatus(IssueStatus.OVERDUE));
-        model.addAttribute("studentCount", userRepository.countByRole(Role.STUDENT));
+        model.addAttribute("studentCount", studentService.countActiveStudents());
         return "admin/profile";
     }
 

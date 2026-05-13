@@ -53,16 +53,16 @@ public class Book {
     @Column(name = "shelf_location", length = 80)
     private String shelfLocation;
 
-    @Column(name = "cover_image", length = 255)
+    @Column(name = "cover_image", length = 200)
     private String coverImage;
 
     @Lob
     private String description;
 
-    @Column(name = "ebook_path", length = 255)
+    @Column(name = "ebook_path", length = 200)
     private String ebookPath;
 
-    @Column(name = "qr_code_path", length = 255)
+    @Column(name = "qr_code_path", length = 200)
     private String qrCodePath;
 
     @Column(name = "is_digital", nullable = false)

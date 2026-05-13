@@ -23,6 +23,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.text.Normalizer;
+import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.Period;
@@ -86,16 +87,20 @@ public class AuthService {
     private final UserRepository userRepository;
     private final StudentRepository studentRepository;
     private final LegacyAwarePasswordEncoder passwordEncoder;
+    private final EmailNotificationService emailNotificationService;
     private final ObjectMapper objectMapper;
+    private final SecureRandom secureRandom = new SecureRandom();
     private HttpClient httpClient;
     private final Map<String, List<String>> lagunaBarangaysByCityCache = new ConcurrentHashMap<>();
 
     public AuthService(UserRepository userRepository,
                        StudentRepository studentRepository,
-                       LegacyAwarePasswordEncoder passwordEncoder) {
+                       LegacyAwarePasswordEncoder passwordEncoder,
+                       EmailNotificationService emailNotificationService) {
         this.userRepository = userRepository;
         this.studentRepository = studentRepository;
         this.passwordEncoder = passwordEncoder;
+        this.emailNotificationService = emailNotificationService;
         this.objectMapper = new ObjectMapper();
     }
 
@@ -129,7 +134,7 @@ public class AuthService {
         String normalizedProvince = validateProvince(province);
         String normalizedCityMunicipality = validateCityMunicipality(cityMunicipality);
         String normalizedBarangay = validateBarangayForCityMunicipality(normalizedCityMunicipality, barangay);
-        String normalizedStreet = hasText(street) ? normalizeAndValidateAddressPart(street, "Street", 180) : "";
+        String normalizedStreet = hasText(street) ? normalizeAndValidateAddressPart(street, "Street", 80) : "";
         String normalizedZipCode = validateZipCode(zipcode, normalizedCityMunicipality);
         validateTerms(agreed);
 
@@ -147,7 +152,7 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(generatedPassword));
         user.setRole(Role.STUDENT);
         user.setStatus(activateImmediately ? UserStatus.ACTIVE : UserStatus.PENDING);
-        user.setStudentId(generatedStudentId);
+        user.setMustChangePassword(true);
         userRepository.save(user);
 
         Student student = new Student();
@@ -160,6 +165,7 @@ public class AuthService {
         student.setDateOfBirth(parsedBirthDate);
 
         Student savedStudent = studentRepository.save(student);
+        emailNotificationService.sendRegistrationTemporaryPassword(savedStudent.getUser(), generatedPassword);
         return new StudentRegistrationResult(savedStudent, generatedPassword);
     }
 
@@ -193,16 +199,16 @@ public class AuthService {
         user.setPasswordHash(passwordEncoder.encode(normalizedPassword));
         user.setRole(Role.STUDENT);
         user.setStatus(status == null ? UserStatus.ACTIVE : status);
-        user.setStudentId(generatedStudentId);
+        user.setMustChangePassword(true);
         userRepository.save(user);
 
         Student student = new Student();
         student.setUser(user);
         student.setStudentId(generatedStudentId);
-        student.setCourse(defaultText(course, "Not set"));
+        student.setCourse(defaultText(course, "Not set", 100, "Course"));
         student.setYearLevel(normalizedYearLevel);
-        student.setPhone(blankToNull(phone));
-        student.setAddress(blankToNull(address));
+        student.setPhone(blankToNull(phone, 30, "Phone"));
+        student.setAddress(blankToNull(address, 200, "Address"));
         student.setDateOfBirth(dateOfBirth);
 
         return studentRepository.save(student);
@@ -377,7 +383,7 @@ public class AuthService {
         if (normalizedProgram.length() < 3) {
             throw new IllegalArgumentException("Program must be at least 3 characters.");
         }
-        if (normalizedProgram.length() > 120) {
+        if (normalizedProgram.length() > 100) {
             throw new IllegalArgumentException("Program is too long.");
         }
         return normalizedProgram;
@@ -465,7 +471,7 @@ public class AuthService {
     }
 
     private String validateBarangayForCityMunicipality(String cityMunicipality, String barangay) {
-        String normalizedBarangay = normalizeAndValidateAddressPart(barangay, "Barangay", 120);
+        String normalizedBarangay = normalizeAndValidateAddressPart(barangay, "Barangay", 60);
 
         List<String> barangays;
         try {
@@ -535,12 +541,26 @@ public class AuthService {
         return value == null ? "" : value.trim().replaceAll("\\s+", " ");
     }
 
-    private String defaultText(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value.trim();
+    private String defaultText(String value, String fallback, int maxLength, String label) {
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(label + " is too long.");
+        }
+        return normalized;
     }
 
-    private String blankToNull(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
+    private String blankToNull(String value, int maxLength, String label) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String normalized = value.trim();
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(label + " is too long.");
+        }
+        return normalized;
     }
 
     private String normalizeFullName(String value) {
@@ -670,10 +690,31 @@ public class AuthService {
                                              String lastName,
                                              LocalDate birthDate,
                                              String studentId) {
-        String lastToken = stripToLetters(lastName);
-        String lastChunk = lastToken.isBlank() ? "Student" : capitalize(lastToken);
-        String birthYear = birthDate == null ? String.valueOf(LocalDate.now().getYear()) : String.valueOf(birthDate.getYear());
-        return lastChunk + birthYear;
+        String uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        String lowercase = "abcdefghijkmnopqrstuvwxyz";
+        String digits = "23456789";
+        String symbols = "!@#$%?";
+        String all = uppercase + lowercase + digits + symbols;
+
+        List<Character> characters = new ArrayList<>();
+        characters.add(randomChar(uppercase));
+        characters.add(randomChar(lowercase));
+        characters.add(randomChar(digits));
+        characters.add(randomChar(symbols));
+        while (characters.size() < 14) {
+            characters.add(randomChar(all));
+        }
+        Collections.shuffle(characters, secureRandom);
+
+        StringBuilder password = new StringBuilder(characters.size());
+        for (Character character : characters) {
+            password.append(character);
+        }
+        return password.toString();
+    }
+
+    private char randomChar(String source) {
+        return source.charAt(secureRandom.nextInt(source.length()));
     }
 
     private String stripToLetters(String value) {

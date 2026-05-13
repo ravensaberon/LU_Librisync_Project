@@ -537,6 +537,17 @@ public class EmailNotificationService {
         return sendEmail(toEmail, subject, body, true);
     }
 
+    public boolean sendRegistrationTemporaryPassword(User recipient, String temporaryPassword) {
+        if (recipient == null || !StringUtils.hasText(recipient.getEmail()) || !StringUtils.hasText(temporaryPassword)) {
+            return false;
+        }
+        return sendImmediateHtmlEmail(
+                recipient.getEmail(),
+                "LU Librisync - Your Temporary Password",
+                buildRegistrationTemporaryPasswordEmailBody(recipient, temporaryPassword)
+        );
+    }
+
     private void ensureReminderQueueCoverage() {
         List<IssueRecord> activeIssues = issueRecordRepository.findByStatusInOrderByIssueDateDesc(List.of(IssueStatus.ISSUED, IssueStatus.OVERDUE));
         for (IssueRecord issueRecord : activeIssues) {
@@ -555,6 +566,46 @@ public class EmailNotificationService {
         for (Fine fine : unpaidFines) {
             queueUnpaidFineNotification(fine);
         }
+    }
+
+    private String buildRegistrationTemporaryPasswordEmailBody(User recipient, String temporaryPassword) {
+        return """
+                <div style="margin:0;padding:24px;background:#f4faf6;font-family:Segoe UI,Arial,sans-serif;color:#163322;">
+                  <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #d5eadc;border-radius:24px;overflow:hidden;box-shadow:0 18px 44px rgba(18,77,47,0.12);">
+                    <div style="padding:24px 32px;background:linear-gradient(135deg,#0f7a36,#34c66a);color:#ffffff;">
+                      <div style="font-size:13px;letter-spacing:0.12em;text-transform:uppercase;opacity:0.88;">LU Librisync</div>
+                      <h1 style="margin:10px 0 4px;font-size:28px;line-height:1.2;">Your Temporary Password</h1>
+                      <p style="margin:0;font-size:15px;opacity:0.92;">Your student account is ready. Use this password for your first sign-in.</p>
+                    </div>
+                    <div style="padding:32px;">
+                      <p style="margin:0 0 16px;font-size:15px;line-height:1.7;">Hello %s,</p>
+                      <p style="margin:0 0 20px;font-size:15px;line-height:1.7;">Your LU Librisync account has been created successfully. For security, your generated password is only sent through email and is no longer shown on the website.</p>
+                      <div style="margin:0 0 24px;padding:18px 20px;border-radius:20px;background:#fffbea;border:1px solid #f1ddb1;">
+                        <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#7c4a00;margin-bottom:8px;">Temporary Password</div>
+                        <div style="font-family:monospace;font-size:22px;font-weight:800;letter-spacing:0.18em;color:#7c4a00;word-break:break-all;">%s</div>
+                        <div style="margin-top:8px;font-size:12px;color:#7c4a00;opacity:0.85;">Sign in with this password, then set a new personal password immediately when the system asks you on first login.</div>
+                      </div>
+                      <div style="margin:0 0 24px;padding:20px;border-radius:18px;background:#fbfefd;border:1px solid #e0efe4;">
+                        <div style="font-size:15px;font-weight:700;color:#18452d;margin-bottom:12px;">Account Details</div>
+                        <table style="width:100%%;border-collapse:collapse;font-size:14px;line-height:1.6;">
+                          <tr><td style="padding:6px 0;color:#5f7b69;">Email</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#173522;">%s</td></tr>
+                          <tr><td style="padding:6px 0;color:#5f7b69;">Account Type</td><td style="padding:6px 0;text-align:right;font-weight:600;color:#173522;">Student</td></tr>
+                        </table>
+                      </div>
+                      <div style="padding:16px 18px;border-radius:16px;background:#fff8ea;border:1px solid #f1ddb1;color:#6b5112;font-size:13px;line-height:1.7;">
+                        Keep this password private. If you did not create this account, contact the library immediately.
+                      </div>
+                    </div>
+                    <div style="padding:18px 32px;background:#f6fbf7;border-top:1px solid #e1efe5;font-size:12px;line-height:1.7;color:#6c8375;">
+                      This is an automated message from LU Librisync. Please do not reply to this email.
+                    </div>
+                  </div>
+                </div>
+                """.formatted(
+                escapeHtml(recipient.getName()),
+                escapeHtml(temporaryPassword),
+                escapeHtml(recipient.getEmail())
+        );
     }
 
     private void queueDueReminderInAppNotification(IssueRecord issueRecord) {
@@ -613,19 +664,19 @@ public class EmailNotificationService {
                 && notificationType.equals(notification.getNotificationType())
                 && notification.getUser() != null
                 && recipient.getId().equals(notification.getUser().getId())
-                && subject.equals(notification.getSubject())
-                && body.equals(notification.getBody())) {
-            if (EmailNotificationStatus.SENT.equals(notification.getStatus())) {
+                && subject.equals(notification.getSubject())) {
+            if (EmailNotificationStatus.SENT.equals(notification.getStatus()) && body.equals(notification.getBody())) {
                 return;
             }
             if (EmailNotificationStatus.PENDING.equals(notification.getStatus())) {
-                if (notification.getScheduledAt() == null || scheduledAt.isBefore(notification.getScheduledAt())) {
-                    notification.setScheduledAt(scheduledAt);
-                    emailNotificationRepository.save(notification);
-                }
+                notification.setBody(body);
+                notification.setScheduledAt(scheduledAt);
+                notification.setSentAt(null);
+                emailNotificationRepository.save(notification);
                 return;
             }
             if (EmailNotificationStatus.FAILED.equals(notification.getStatus())) {
+                notification.setBody(body);
                 notification.setScheduledAt(scheduledAt);
                 notification.setStatus(EmailNotificationStatus.PENDING);
                 notification.setSentAt(null);

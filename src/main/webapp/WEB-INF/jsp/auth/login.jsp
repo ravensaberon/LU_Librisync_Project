@@ -37,7 +37,7 @@
                 <div class="alert alert-success">You have been logged out.</div>
             </c:if>
             <c:if test="${not empty param.registered}">
-                <div class="alert alert-success">Registration complete. Sign in using your temporary password, then update it on first login.</div>
+                <div class="alert alert-success">Registration complete. Check your email for the temporary password, then sign in and update it on first login.</div>
             </c:if>
 
             <form method="post" action="${pageContext.request.contextPath}/login">

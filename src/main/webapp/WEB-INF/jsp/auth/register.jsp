@@ -432,7 +432,7 @@
 
                     <div class="register-summary mt-3">
                         <strong style="display:block;color:#173522;">What happens after registration</strong>
-                        <p class="register-step-note mb-0">A temporary password is generated automatically, your account signs in immediately, then the next page asks you to set a new personal password before using the system.</p>
+                        <p class="register-step-note mb-0">A temporary password is generated automatically and sent to your email. Your account signs in immediately, then the next page asks you to set a new personal password before using the system.</p>
                     </div>
                 </section>
 
@@ -671,7 +671,8 @@
             maskedEmail: "${empty registrationOtpMaskedEmail ? '' : registrationOtpMaskedEmail}",
             expiresAtEpochMs: ${empty registrationOtpExpiresAtEpochMs ? 'null' : registrationOtpExpiresAtEpochMs},
             resendAvailableAtEpochMs: ${empty registrationOtpResendAvailableAtEpochMs ? 'null' : registrationOtpResendAvailableAtEpochMs},
-            email: "${empty emailValue ? '' : emailValue}"
+            email: "${empty emailValue ? '' : emailValue}",
+            dispatchMessage: ""
         };
 
         function setFieldMessage(input, element, message) {
@@ -708,7 +709,8 @@
                 maskedEmail: nextState.maskedEmail || "",
                 expiresAtEpochMs: nextState.expiresAtEpochMs || null,
                 resendAvailableAtEpochMs: nextState.resendAvailableAtEpochMs || null,
-                email: nextState.email || (email.value || "").trim().toLowerCase()
+                email: nextState.email || (email.value || "").trim().toLowerCase(),
+                dispatchMessage: nextState.message || nextState.dispatchMessage || ""
             };
             renderOtpState();
             persistDraft();
@@ -721,7 +723,8 @@
                 maskedEmail: "",
                 expiresAtEpochMs: null,
                 resendAvailableAtEpochMs: null,
-                email: ""
+                email: "",
+                dispatchMessage: ""
             });
             otpCode.value = "";
             setFieldMessage(otpCode, errors.otpCode, "");
@@ -757,7 +760,7 @@
                 otpDescription.textContent = "Email verified successfully. You can now create the account once all final details are valid.";
                 otpMaskedEmailLabel.textContent = otpState.maskedEmail || emailValue || "Verified email";
             } else if (otpState.hasPendingOtp) {
-                otpDescription.textContent = "Enter the OTP sent to your email to unlock account creation.";
+                otpDescription.textContent = otpState.dispatchMessage || "Enter the OTP sent to your email to unlock account creation.";
                 otpMaskedEmailLabel.textContent = otpState.maskedEmail || emailValue || "Verification code sent";
             } else {
                 otpDescription.textContent = "Send a 6-digit code to your email, then verify it here before creating the account.";
@@ -887,14 +890,14 @@
         function validateBirthDate(silent) {
             if (!birthDate.value) {
                 ageValue.textContent = "Not yet computed";
-                setFieldMessage(birthDate, errors.birthDate, "Birthday is required.");
+                setFieldMessage(birthDate, errors.birthDate, silent ? "" : "Birthday is required.");
                 return false;
             }
 
             var selected = new Date(birthDate.value + "T00:00:00");
             if (Number.isNaN(selected.getTime())) {
                 ageValue.textContent = "Not yet computed";
-                setFieldMessage(birthDate, errors.birthDate, "Enter a valid birth date.");
+                setFieldMessage(birthDate, errors.birthDate, silent ? "" : "Enter a valid birth date.");
                 return false;
             }
 

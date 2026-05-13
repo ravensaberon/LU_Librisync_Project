@@ -30,7 +30,7 @@ public class StudentProfileOtpRequest {
     @Column(name = "pending_name", nullable = false, length = 100)
     private String pendingName;
 
-    @Column(name = "pending_course", length = 120)
+    @Column(name = "pending_course", length = 100)
     private String pendingCourse;
 
     @Column(name = "pending_year_level", length = 60)
@@ -39,16 +39,16 @@ public class StudentProfileOtpRequest {
     @Column(name = "pending_phone", length = 30)
     private String pendingPhone;
 
-    @Column(name = "pending_address", length = 255)
+    @Column(name = "pending_address", length = 200)
     private String pendingAddress;
 
     @Column(name = "pending_date_of_birth")
     private LocalDate pendingDateOfBirth;
 
-    @Column(name = "otp_hash", nullable = false, length = 128)
+    @Column(name = "otp_hash", nullable = false, length = 64)
     private String otpHash;
 
-    @Column(name = "destination_email", nullable = false, length = 120)
+    @Column(name = "destination_email", nullable = false, length = 100)
     private String destinationEmail;
 
     @Column(name = "last_sent_at", nullable = false)

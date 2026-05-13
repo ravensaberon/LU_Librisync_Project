@@ -17,8 +17,10 @@
 *.out
 *.err
 /cookies.txt
+/temp_*.html
 
 # App-generated storage
 /storage/ebooks/
 /storage/email-outbox/
 /storage/profile-pictures/
+/storage/book-covers/test-*

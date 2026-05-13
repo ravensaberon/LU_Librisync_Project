@@ -35,7 +35,7 @@ public class User {
     @Column(name = "suffix", length = 20)
     private String suffix;
 
-    @Column(nullable = false, unique = true, length = 120)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
     @Column(name = "password", nullable = false, length = 255)
@@ -44,9 +44,6 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private Role role = Role.STUDENT;
-
-    @Column(name = "student_id", unique = true, length = 20)
-    private String studentId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -63,6 +60,9 @@ public class User {
 
     @OneToOne(mappedBy = "user")
     private Student student;
+
+    @OneToOne(mappedBy = "user")
+    private Admin admin;
 
     @PrePersist
     void onCreate() {
@@ -152,14 +152,6 @@ public class User {
         this.role = role;
     }
 
-    public String getStudentId() {
-        return studentId;
-    }
-
-    public void setStudentId(String studentId) {
-        this.studentId = studentId;
-    }
-
     public UserStatus getStatus() {
         return status;
     }
@@ -210,6 +202,14 @@ public class User {
 
     public void setStudent(Student student) {
         this.student = student;
+    }
+
+    public Admin getAdmin() {
+        return admin;
+    }
+
+    public void setAdmin(Admin admin) {
+        this.admin = admin;
     }
 
     private static String buildFullName(String firstName,

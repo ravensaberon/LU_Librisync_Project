@@ -33,8 +33,6 @@ import java.util.Map;
 @Controller
 public class AuthController {
 
-    private static final String REGISTRATION_TEMP_PASSWORD_SESSION_KEY = "registrationTemporaryPassword";
-
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
     private final RegistrationOtpService registrationOtpService;
@@ -117,13 +115,11 @@ public class AuthController {
             RegistrationOtpState state = registrationEmailOtpService.requestOtp(email, session);
             Map<String, Object> response = buildRegistrationOtpResponse(email, session);
             response.put("success", true);
-            response.put("message", "A verification code has been sent to your email.");
+            response.put("message", "A verification code was generated. Check your email, or open the local email outbox if mail delivery is unavailable.");
             response.put("maskedEmail", state.getMaskedEmail());
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException exception) {
             return ResponseEntity.badRequest().body(buildRegistrationOtpErrorResponse(email, session, exception.getMessage()));
-        } catch (IllegalStateException exception) {
-            return ResponseEntity.status(503).body(buildRegistrationOtpErrorResponse(email, session, exception.getMessage()));
         }
     }
 
@@ -186,7 +182,6 @@ public class AuthController {
             );
             Student student = registrationResult.student();
             registrationEmailOtpService.clear(session);
-            session.setAttribute(REGISTRATION_TEMP_PASSWORD_SESSION_KEY, registrationResult.temporaryPassword());
             request.login(student.getUser().getEmail(), registrationResult.temporaryPassword());
             return "redirect:/student/password/change-temporary";
         } catch (ServletException exception) {
@@ -208,8 +203,29 @@ public class AuthController {
                     zipcode,
                     agree != null
             );
-            model.addAttribute("error", "Account created, but automatic sign-in failed. Please sign in using your temporary password.");
-            model.addAttribute("temporaryPassword", session.getAttribute(REGISTRATION_TEMP_PASSWORD_SESSION_KEY));
+            model.addAttribute("error", "Account created, but automatic sign-in failed. Check your email or the local email outbox for the temporary password, then sign in manually.");
+            return "auth/register";
+        } catch (IllegalStateException exception) {
+            populateRegisterModel(
+                    model,
+                    firstName,
+                    middleName,
+                    lastName,
+                    suffix,
+                    program,
+                    yearLevel,
+                    email,
+                    contactNumber,
+                    birthDate,
+                    province,
+                    cityMunicipality,
+                    barangay,
+                    street,
+                    zipcode,
+                    agree != null
+            );
+            model.addAttribute("error", exception.getMessage());
+            populateRegistrationEmailVerification(model, session, email);
             return "auth/register";
         } catch (IllegalArgumentException exception) {
             populateRegisterModel(

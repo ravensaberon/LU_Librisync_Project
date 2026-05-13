@@ -67,7 +67,7 @@ public class ReservationController {
                                    Authentication authentication,
                                    RedirectAttributes redirectAttributes) {
         try {
-            var reservation = reservationService.placeReservation(bookId, authentication.getName());
+            var reservation = reservationService.placeReservation(bookId, authentication.getName(), preferredPickupDate);
             auditLogService.log(
                     authentication.getName(),
                     "RESERVATION_CREATED",

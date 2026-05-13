@@ -66,15 +66,11 @@ public class RegistrationOtpService {
         token.setUsed(false);
 
         RegistrationOtpToken saved = tokenRepository.save(token);
-        boolean delivered = emailNotificationService.sendImmediateHtmlEmail(
+        emailNotificationService.sendImmediateHtmlEmail(
                 user.getEmail(),
                 "LU Librisync — Verify Your Email",
                 buildVerificationEmailBody(user, otpCode, saved, temporaryPassword)
         );
-        if (!delivered) {
-            throw new IllegalStateException("Unable to send registration OTP email right now. Please check the SMTP configuration and try again.");
-        }
-
         return toState(saved);
     }
 
@@ -220,7 +216,7 @@ public class RegistrationOtpService {
                       <div style="margin:0 0 24px;padding:18px 20px;border-radius:20px;background:#fffbea;border:1px solid #f1ddb1;">
                         <div style="font-size:12px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#7c4a00;margin-bottom:8px;">Your Temporary Password</div>
                         <div style="font-family:monospace;font-size:22px;font-weight:800;letter-spacing:0.18em;color:#7c4a00;word-break:break-all;">%s</div>
-                        <div style="margin-top:8px;font-size:12px;color:#7c4a00;opacity:0.85;">Save this password. You will need it to log in for the first time. You will be asked to change it immediately after logging in.</div>
+                        <div style="margin-top:8px;font-size:12px;color:#7c4a00;opacity:0.85;">Use this password for your first sign-in, then set a new personal password immediately when the system asks you on first login.</div>
                       </div>
                     """.formatted(escapeHtml(temporaryPassword));
         }

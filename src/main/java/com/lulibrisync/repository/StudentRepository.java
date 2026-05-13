@@ -1,6 +1,7 @@
 package com.lulibrisync.repository;
 
 import com.lulibrisync.model.Student;
+import com.lulibrisync.model.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -17,6 +18,8 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
     List<Student> findAllByOrderByStudentIdAsc();
 
     List<Student> findByStudentIdContainingIgnoreCaseOrderByStudentIdAsc(String studentId);
+
+    long countByUser_Status(UserStatus status);
 
     boolean existsByPhone(String phone);
 }

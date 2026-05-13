@@ -25,7 +25,7 @@ public class RegistrationOtpToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(nullable = false, length = 120)
+    @Column(nullable = false, length = 64)
     private String token;
 
     @Column(name = "expires_at", nullable = false)

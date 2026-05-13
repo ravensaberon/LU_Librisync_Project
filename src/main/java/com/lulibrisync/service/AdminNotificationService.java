@@ -2,8 +2,9 @@ package com.lulibrisync.service;
 
 import com.lulibrisync.model.AdminNotification;
 import com.lulibrisync.model.AdminNotificationType;
-import com.lulibrisync.model.Role;
+import com.lulibrisync.model.Admin;
 import com.lulibrisync.model.User;
+import com.lulibrisync.repository.AdminRepository;
 import com.lulibrisync.repository.AdminNotificationRepository;
 import com.lulibrisync.repository.UserRepository;
 import com.lulibrisync.util.PaginationSlice;
@@ -20,11 +21,14 @@ import java.util.Optional;
 public class AdminNotificationService {
 
     private final AdminNotificationRepository adminNotificationRepository;
+    private final AdminRepository adminRepository;
     private final UserRepository userRepository;
 
     public AdminNotificationService(AdminNotificationRepository adminNotificationRepository,
+                                    AdminRepository adminRepository,
                                     UserRepository userRepository) {
         this.adminNotificationRepository = adminNotificationRepository;
+        this.adminRepository = adminRepository;
         this.userRepository = userRepository;
     }
 
@@ -33,9 +37,11 @@ public class AdminNotificationService {
                              String title,
                              String message,
                              String linkUrl) {
-        List<User> admins = userRepository.findAllByRole(Role.ADMIN);
-        for (User admin : admins) {
-            createNotification(admin, notificationType, title, message, linkUrl, false);
+        List<Admin> admins = adminRepository.findAll();
+        for (Admin admin : admins) {
+            if (admin.getUser() != null) {
+                createNotification(admin.getUser(), notificationType, title, message, linkUrl, false);
+            }
         }
     }
 
@@ -56,7 +62,7 @@ public class AdminNotificationService {
                                    String linkUrl) {
         User user = getUserByEmail(userEmail);
         Optional<AdminNotification> latest = adminNotificationRepository
-                .findTopByAdminUser_EmailIgnoreCaseAndNotificationTypeAndTitleAndMessageOrderByCreatedAtDesc(
+                .findTopByUser_EmailIgnoreCaseAndNotificationTypeAndTitleAndMessageOrderByCreatedAtDesc(
                         user.getEmail(),
                         notificationType,
                         title,
@@ -75,7 +81,7 @@ public class AdminNotificationService {
 
     public List<AdminNotification> getRecentNotifications(String userEmail, int limit) {
         ensureUserExists(userEmail);
-        List<AdminNotification> notifications = adminNotificationRepository.findByAdminUser_EmailIgnoreCaseOrderByCreatedAtDesc(userEmail);
+        List<AdminNotification> notifications = adminNotificationRepository.findByUser_EmailIgnoreCaseOrderByCreatedAtDesc(userEmail);
         return notifications.stream()
                 .limit(Math.max(1, limit))
                 .toList();
@@ -83,14 +89,14 @@ public class AdminNotificationService {
 
     public long countUnreadNotifications(String userEmail) {
         ensureUserExists(userEmail);
-        return adminNotificationRepository.countByAdminUser_EmailIgnoreCaseAndReadFalse(userEmail);
+        return adminNotificationRepository.countByUser_EmailIgnoreCaseAndReadFalse(userEmail);
     }
 
     @Transactional
     public void markAllAsRead(String userEmail) {
         ensureUserExists(userEmail);
         List<AdminNotification> unreadNotifications = adminNotificationRepository
-                .findByAdminUser_EmailIgnoreCaseAndReadFalseOrderByCreatedAtDesc(userEmail);
+                .findByUser_EmailIgnoreCaseAndReadFalseOrderByCreatedAtDesc(userEmail);
         for (AdminNotification notification : unreadNotifications) {
             notification.setRead(true);
             notification.setReadAt(LocalDateTime.now());
@@ -100,7 +106,7 @@ public class AdminNotificationService {
 
     public List<AdminNotification> getAllNotifications(String userEmail) {
         ensureUserExists(userEmail);
-        return adminNotificationRepository.findByAdminUser_EmailIgnoreCaseOrderByCreatedAtDesc(userEmail);
+        return adminNotificationRepository.findByUser_EmailIgnoreCaseOrderByCreatedAtDesc(userEmail);
     }
 
     public PaginationSlice<AdminNotification> getNotificationPage(String userEmail, Integer page, int pageSize) {
@@ -123,7 +129,7 @@ public class AdminNotificationService {
                                     String linkUrl,
                                     boolean read) {
         AdminNotification notification = new AdminNotification();
-        notification.setAdminUser(user);
+        notification.setUser(user);
         notification.setNotificationType(notificationType);
         notification.setTitle(title);
         notification.setMessage(message);

@@ -8,20 +8,20 @@ import java.util.Optional;
 
 public interface AdminNotificationRepository extends JpaRepository<AdminNotification, Long> {
 
-    List<AdminNotification> findTop10ByAdminUser_EmailIgnoreCaseOrderByCreatedAtDesc(String email);
+    List<AdminNotification> findTop10ByUser_EmailIgnoreCaseOrderByCreatedAtDesc(String email);
 
-    List<AdminNotification> findTop10ByAdminUser_EmailIgnoreCaseAndReadFalseOrderByCreatedAtDesc(String email);
+    List<AdminNotification> findTop10ByUser_EmailIgnoreCaseAndReadFalseOrderByCreatedAtDesc(String email);
 
-    List<AdminNotification> findByAdminUser_EmailIgnoreCaseOrderByCreatedAtDesc(String email);
+    List<AdminNotification> findByUser_EmailIgnoreCaseOrderByCreatedAtDesc(String email);
 
-    List<AdminNotification> findByAdminUser_EmailIgnoreCaseAndReadFalseOrderByCreatedAtDesc(String email);
+    List<AdminNotification> findByUser_EmailIgnoreCaseAndReadFalseOrderByCreatedAtDesc(String email);
 
-    long countByAdminUser_EmailIgnoreCaseAndReadFalse(String email);
+    long countByUser_EmailIgnoreCaseAndReadFalse(String email);
 
-    Optional<AdminNotification> findByIdAndAdminUser_EmailIgnoreCase(Long id, String email);
+    Optional<AdminNotification> findByIdAndUser_EmailIgnoreCase(Long id, String email);
 
-    Optional<AdminNotification> findTopByAdminUser_EmailIgnoreCaseAndNotificationTypeAndTitleAndMessageOrderByCreatedAtDesc(String email,
-                                                                                                                             com.lulibrisync.model.AdminNotificationType notificationType,
-                                                                                                                             String title,
-                                                                                                                             String message);
+    Optional<AdminNotification> findTopByUser_EmailIgnoreCaseAndNotificationTypeAndTitleAndMessageOrderByCreatedAtDesc(String email,
+                                                                                                                         com.lulibrisync.model.AdminNotificationType notificationType,
+                                                                                                                         String title,
+                                                                                                                         String message);
 }

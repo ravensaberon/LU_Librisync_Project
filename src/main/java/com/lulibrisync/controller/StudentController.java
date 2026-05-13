@@ -51,8 +51,6 @@ public class StudentController {
     private static final int STUDENT_RETURN_REQUESTS_PAGE_SIZE = 8;
     private static final int STUDENT_RETURNED_HISTORY_PAGE_SIZE = 10;
     private static final String PASSWORD_RESET_VERIFIED_TOKEN_SESSION_KEY = "studentPasswordResetVerifiedTokenId";
-    private static final String REGISTRATION_TEMP_PASSWORD_SESSION_KEY = "registrationTemporaryPassword";
-
     private final StudentService studentService;
     private final IssueService issueService;
     private final ReservationService reservationService;
@@ -163,15 +161,16 @@ public class StudentController {
 
     @GetMapping("/student/password/change-temporary")
     public String temporaryPasswordChangePage(Authentication authentication,
-                                              HttpSession session,
                                               Model model) {
         if (isAdmin(authentication)) {
             return "redirect:/admin/dashboard";
         }
+        if (!studentService.mustChangePassword(authentication.getName())) {
+            return "redirect:/student/dashboard";
+        }
         Student student = studentService.getStudentByEmail(authentication.getName());
         model.addAttribute("student", student);
         model.addAttribute("mustChangePassword", studentService.mustChangePassword(authentication.getName()));
-        model.addAttribute("temporaryPassword", session.getAttribute(REGISTRATION_TEMP_PASSWORD_SESSION_KEY));
         return "student/force-password-change";
     }
 
@@ -179,18 +178,9 @@ public class StudentController {
     public String changeTemporaryPassword(Authentication authentication,
                                           @RequestParam(required = false) String newPassword,
                                           @RequestParam(required = false) String confirmPassword,
-                                          HttpSession session,
                                           RedirectAttributes redirectAttributes) {
-        // If both fields are blank the student chose to keep the generated password — skip to dashboard
-        boolean skipped = (newPassword == null || newPassword.isBlank())
-                && (confirmPassword == null || confirmPassword.isBlank());
-        if (skipped) {
-            session.removeAttribute(REGISTRATION_TEMP_PASSWORD_SESSION_KEY);
-            return "redirect:/student/dashboard";
-        }
         try {
             studentService.completeRequiredPasswordChange(authentication.getName(), newPassword, confirmPassword);
-            session.removeAttribute(REGISTRATION_TEMP_PASSWORD_SESSION_KEY);
             redirectAttributes.addFlashAttribute("success", "Password updated successfully.");
             return "redirect:/student/dashboard";
         } catch (IllegalArgumentException exception) {

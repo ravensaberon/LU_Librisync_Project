@@ -9,9 +9,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
@@ -49,9 +52,44 @@ public class SecurityConfig {
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()
-                );
+                )
+                .addFilterAfter(forcePasswordChangeFilter(), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public OncePerRequestFilter forcePasswordChangeFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request,
+                                            HttpServletResponse response,
+                                            jakarta.servlet.FilterChain filterChain) throws ServletException, IOException {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication == null || !authentication.isAuthenticated()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                boolean isAdmin = authentication.getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+                String path = request.getRequestURI().substring(request.getContextPath().length());
+                boolean isStudentPage = path.startsWith("/student/");
+                boolean isPasswordChangePage = path.startsWith("/student/password/change-temporary");
+
+                boolean mustChangePassword = !isAdmin && isStudentPage && !isPasswordChangePage
+                        && userRepository.findByEmailIgnoreCase(authentication.getName())
+                        .map(com.lulibrisync.model.User::isMustChangePassword)
+                        .orElse(false);
+
+                if (mustChangePassword) {
+                    response.sendRedirect(request.getContextPath() + "/student/password/change-temporary");
+                    return;
+                }
+
+                filterChain.doFilter(request, response);
+            }
+        };
     }
 
     @Bean

@@ -31,7 +31,7 @@ public class Student {
     @Column(name = "student_id", nullable = false, unique = true, length = 20)
     private String studentId;
 
-    @Column(nullable = false, length = 120)
+    @Column(nullable = false, length = 100)
     private String course = "Not set";
 
     @Column(name = "year_level", nullable = false, length = 60)
@@ -40,13 +40,13 @@ public class Student {
     @Column(length = 30, unique = true)
     private String phone;
 
-    @Column(length = 255)
+    @Column(length = 200)
     private String address;
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @Column(name = "qr_code_path", length = 255)
+    @Column(name = "qr_code_path", length = 200)
     private String qrCodePath;
 
     @Column(name = "created_at", nullable = false, updatable = false)

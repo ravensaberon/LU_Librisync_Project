@@ -121,10 +121,10 @@ public class StudentService {
         String normalizedMiddleName = normalizeOptionalText(request.getMiddleName(), "Middle name", 50, null);
         String normalizedLastName = normalizeRequiredText(request.getLastName(), "Last name", 50);
         String normalizedSuffix = normalizeOptionalText(request.getSuffix(), "Suffix", 20, null);
-        String normalizedCourse = normalizeOptionalText(request.getCourse(), "Course", 120, "Not set");
+        String normalizedCourse = normalizeOptionalText(request.getCourse(), "Course", 100, "Not set");
         String normalizedYearLevel = normalizeOptionalYearLevel(request.getYearLevel());
         String normalizedPhone = normalizeOptionalPhone(request.getPhone());
-        String normalizedAddress = normalizeOptionalText(request.getAddress(), "Address", 255, null);
+        String normalizedAddress = normalizeOptionalText(request.getAddress(), "Address", 200, null);
         LocalDate normalizedDateOfBirth = request.getDateOfBirth();
 
         if (normalizedDateOfBirth != null) {
@@ -215,10 +215,10 @@ public class StudentService {
         user.setEmail(normalizedEmail);
         user.setStatus(status == null ? UserStatus.ACTIVE : status);
 
-        student.setCourse(defaultText(course, "Not set"));
+        student.setCourse(normalizeOptionalText(course, "Course", 100, "Not set"));
         student.setYearLevel(normalizeOptionalYearLevel(yearLevel));
         student.setPhone(normalizedPhone);
-        student.setAddress(blankToNull(address));
+        student.setAddress(normalizeOptionalText(address, "Address", 200, null));
         student.setDateOfBirth(dateOfBirth);
 
         userRepository.save(user);
@@ -247,7 +247,7 @@ public class StudentService {
         }
 
         user.setPasswordHash(passwordEncoder.encode(normalizedPassword));
-        user.setMustChangePassword(false);
+        user.setMustChangePassword(true);
         userRepository.save(user);
     }
 
@@ -291,6 +291,10 @@ public class StudentService {
         User user = userRepository.findByEmailIgnoreCase(required(email, "User not found."))
                 .orElseThrow(() -> new IllegalArgumentException("User not found."));
 
+        if (!user.isMustChangePassword()) {
+            throw new IllegalArgumentException("A required password change is not active for this account.");
+        }
+
         String normalizedNewPassword = required(newPassword, "New password is required.");
         String normalizedConfirmPassword = required(confirmPassword, "Confirm password is required.");
 
@@ -320,7 +324,11 @@ public class StudentService {
             throw new IllegalArgumentException("Resolve all active issues before deleting this student account.");
         }
 
-        userRepository.delete(student.getUser());
+        User user = student.getUser();
+        studentRepository.delete(student);
+        if (user != null) {
+            userRepository.delete(user);
+        }
     }
 
     @Transactional
@@ -355,6 +363,10 @@ public class StudentService {
 
     public UserStatus[] getAvailableStatuses() {
         return UserStatus.values();
+    }
+
+    public long countActiveStudents() {
+        return studentRepository.countByUser_Status(UserStatus.ACTIVE);
     }
 
     private String required(String value, String message) {

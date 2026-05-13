@@ -142,14 +142,11 @@ public class RegistrationEmailOtpService {
 
     private String generateOtpCodeAndSend(String email) {
         String otpCode = String.format("%06d", secureRandom.nextInt(1_000_000));
-        boolean delivered = emailNotificationService.sendImmediateHtmlEmail(
+        emailNotificationService.sendImmediateHtmlEmail(
                 email,
                 "LU Librisync - Registration Email Verification",
                 buildEmailBody(email, otpCode)
         );
-        if (!delivered) {
-            throw new IllegalStateException("Unable to send OTP email right now. Please check the SMTP configuration and try again.");
-        }
         return otpCode;
     }
 

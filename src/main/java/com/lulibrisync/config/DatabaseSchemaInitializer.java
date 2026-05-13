@@ -27,27 +27,27 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
         try (Connection connection = dataSource.getConnection();
              Statement statement = connection.createStatement()) {
             ensureUserNameColumns(statement);
+            ensureAdminProfilesTable(statement);
             ensureStudentReadingHistoryView(statement);
             ensurePreferredPickupDateColumn(statement);
-            ensureStudentRegistrationOtpTable(statement);
-            ensureStudentPasswordChangeOtpTable(statement);
+            dropUnusedLegacyOtpTables(statement);
             ensureReservationRequestTypeColumn(statement);
             ensureIssueReturnRequestColumn(statement);
-            ensureAdminNotificationsTable(statement);
+            ensureUserNotificationsTable(statement);
             ensureReservationStatusEnumValues(statement);
             ensureEmailNotificationTypeEnumValues(statement);
             ensureRegistrationOtpTokensTable(statement);
             ensureUserStatusPendingValue(statement);
             ensureMustChangePasswordColumn(statement);
             ensureBookArchiveColumns(statement);
+            ensureProtectedForeignKeys(statement);
+            tightenColumnSizes(statement);
         }
     }
 
     private void ensureUserNameColumns(Statement statement) throws Exception {
-        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'users'")) {
-            if (!tables.next()) {
-                return;
-            }
+        if (!tableExists(statement, "users")) {
+            return;
         }
 
         if (!hasColumn(statement, "users", "first_name")) {
@@ -90,143 +90,133 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
             statement.executeUpdate("ALTER TABLE users DROP COLUMN name");
             logger.info("Migrated users.name into first_name/middle_name/last_name/suffix and removed the legacy column.");
         }
+
+        if (hasColumn(statement, "users", "student_id") && tableExists(statement, "students")) {
+            statement.executeUpdate(
+                    "UPDATE students s "
+                            + "JOIN users u ON u.id = s.user_id "
+                            + "SET s.student_id = COALESCE(NULLIF(TRIM(s.student_id), ''), u.student_id) "
+                            + "WHERE u.student_id IS NOT NULL AND TRIM(u.student_id) <> ''"
+            );
+            statement.executeUpdate("ALTER TABLE users DROP COLUMN student_id");
+            logger.info("Removed redundant users.student_id column after backfilling students.student_id.");
+        }
+    }
+
+    private void ensureAdminProfilesTable(Statement statement) throws Exception {
+        statement.executeUpdate(
+                "CREATE TABLE IF NOT EXISTS admins ("
+                        + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
+                        + "user_id BIGINT NOT NULL UNIQUE, "
+                        + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                        + "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
+                        + "CONSTRAINT fk_admins_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
+                        + ")"
+        );
+
+        statement.executeUpdate(
+                "INSERT INTO admins (user_id) "
+                        + "SELECT u.id "
+                        + "FROM users u "
+                        + "LEFT JOIN admins a ON a.user_id = u.id "
+                        + "WHERE u.role = 'ADMIN' AND a.id IS NULL"
+        );
     }
 
     private void ensurePreferredPickupDateColumn(Statement statement) throws Exception {
-        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'reservations'")) {
-            if (!tables.next()) {
-                return;
-            }
+        if (!tableExists(statement, "reservations")) {
+            return;
         }
 
-        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM reservations LIKE 'preferred_pickup_date'")) {
-            if (columns.next()) {
-                return;
-            }
+        if (hasColumn(statement, "reservations", "preferred_pickup_date")) {
+            return;
         }
 
         statement.executeUpdate("ALTER TABLE reservations ADD COLUMN preferred_pickup_date DATE NULL AFTER expires_at");
         logger.info("Added reservations.preferred_pickup_date column for scheduled pickup support.");
     }
 
-    private void ensureStudentRegistrationOtpTable(Statement statement) throws Exception {
-        statement.executeUpdate(
-                "CREATE TABLE IF NOT EXISTS student_registration_otp_requests ("
-                        + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                        + "pending_first_name VARCHAR(50) NOT NULL, "
-                        + "pending_middle_name VARCHAR(50), "
-                        + "pending_last_name VARCHAR(50) NOT NULL, "
-                        + "pending_full_name VARCHAR(100) NOT NULL, "
-                        + "pending_program VARCHAR(120) NOT NULL, "
-                        + "pending_year_level VARCHAR(60) NOT NULL, "
-                        + "pending_email VARCHAR(120) NOT NULL, "
-                        + "pending_contact_number VARCHAR(30) NOT NULL, "
-                        + "pending_birth_date DATE NOT NULL, "
-                        + "pending_province VARCHAR(120) NOT NULL, "
-                        + "pending_city_municipality VARCHAR(120) NOT NULL, "
-                        + "pending_barangay VARCHAR(120) NOT NULL, "
-                        + "pending_street VARCHAR(180) NOT NULL, "
-                        + "pending_zipcode VARCHAR(4) NOT NULL, "
-                        + "pending_address VARCHAR(255) NOT NULL, "
-                        + "pending_password_hash VARCHAR(255) NOT NULL, "
-                        + "otp_hash VARCHAR(128) NOT NULL, "
-                        + "destination_email VARCHAR(120) NOT NULL, "
-                        + "last_sent_at DATETIME NOT NULL, "
-                        + "resend_available_at DATETIME NOT NULL, "
-                        + "expires_at DATETIME NOT NULL, "
-                        + "used BOOLEAN NOT NULL DEFAULT FALSE, "
-                        + "verified_at DATETIME NULL, "
-                        + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
-                        + "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"
-                        + ")"
-        );
-    }
-
-    private void ensureStudentPasswordChangeOtpTable(Statement statement) throws Exception {
-        statement.executeUpdate(
-                "CREATE TABLE IF NOT EXISTS student_password_change_otp_requests ("
-                        + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                        + "student_id BIGINT NOT NULL, "
-                        + "pending_password_hash VARCHAR(255) NOT NULL, "
-                        + "otp_hash VARCHAR(128) NOT NULL, "
-                        + "destination_email VARCHAR(120) NOT NULL, "
-                        + "last_sent_at DATETIME NOT NULL, "
-                        + "resend_available_at DATETIME NOT NULL, "
-                        + "expires_at DATETIME NOT NULL, "
-                        + "used BOOLEAN NOT NULL DEFAULT FALSE, "
-                        + "verified_at DATETIME NULL, "
-                        + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
-                        + "updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, "
-                        + "CONSTRAINT fk_student_password_otp_student FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
-                        + ")"
-        );
+    private void dropUnusedLegacyOtpTables(Statement statement) throws Exception {
+        if (tableExists(statement, "student_registration_otp_requests")) {
+            statement.executeUpdate("DROP TABLE student_registration_otp_requests");
+            logger.info("Dropped unused student_registration_otp_requests table.");
+        }
+        if (tableExists(statement, "student_password_change_otp_requests")) {
+            statement.executeUpdate("DROP TABLE student_password_change_otp_requests");
+            logger.info("Dropped unused student_password_change_otp_requests table.");
+        }
     }
 
     private void ensureReservationRequestTypeColumn(Statement statement) throws Exception {
-        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'reservations'")) {
-            if (!tables.next()) {
-                return;
-            }
+        if (!tableExists(statement, "reservations")) {
+            return;
         }
 
-        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM reservations LIKE 'request_type'")) {
-            if (!columns.next()) {
-                statement.executeUpdate("ALTER TABLE reservations ADD COLUMN request_type VARCHAR(20) NOT NULL DEFAULT 'RESERVATION' AFTER status");
-                logger.info("Added reservations.request_type column for borrow-vs-reservation flows.");
-            }
+        if (!hasColumn(statement, "reservations", "request_type")) {
+            statement.executeUpdate("ALTER TABLE reservations ADD COLUMN request_type VARCHAR(20) NOT NULL DEFAULT 'RESERVATION' AFTER status");
+            logger.info("Added reservations.request_type column for borrow-vs-reservation flows.");
         }
 
         statement.executeUpdate("UPDATE reservations SET request_type = 'RESERVATION' WHERE request_type IS NULL OR request_type = ''");
     }
 
     private void ensureIssueReturnRequestColumn(Statement statement) throws Exception {
-        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'issue_records'")) {
-            if (!tables.next()) {
-                return;
-            }
+        if (!tableExists(statement, "issue_records")) {
+            return;
         }
 
-        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM issue_records LIKE 'return_requested_at'")) {
-            if (columns.next()) {
-                return;
-            }
+        if (hasColumn(statement, "issue_records", "return_requested_at")) {
+            return;
         }
 
         statement.executeUpdate("ALTER TABLE issue_records ADD COLUMN return_requested_at DATETIME NULL AFTER return_date");
         logger.info("Added issue_records.return_requested_at column for desk-confirmed returns.");
     }
 
-    private void ensureAdminNotificationsTable(Statement statement) throws Exception {
+    private void ensureUserNotificationsTable(Statement statement) throws Exception {
         statement.executeUpdate(
-                "CREATE TABLE IF NOT EXISTS admin_notifications ("
+                "CREATE TABLE IF NOT EXISTS user_notifications ("
                         + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
-                        + "admin_user_id BIGINT NOT NULL, "
+                        + "user_id BIGINT NOT NULL, "
                         + "notification_type VARCHAR(30) NOT NULL, "
                         + "title VARCHAR(180) NOT NULL, "
                         + "message TEXT NOT NULL, "
-                        + "link_url VARCHAR(255), "
+                        + "link_url VARCHAR(200), "
                         + "is_read BOOLEAN NOT NULL DEFAULT FALSE, "
                         + "read_at DATETIME NULL, "
                         + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
-                        + "CONSTRAINT fk_admin_notifications_user FOREIGN KEY (admin_user_id) REFERENCES users(id) ON DELETE CASCADE"
+                        + "CONSTRAINT fk_user_notifications_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"
                         + ")"
         );
-        logger.info("Ensured admin_notifications table exists for in-app admin alerts.");
+
+        if (tableExists(statement, "admin_notifications")) {
+            statement.executeUpdate(
+                    "INSERT INTO user_notifications (user_id, notification_type, title, message, link_url, is_read, read_at, created_at) "
+                            + "SELECT legacy.admin_user_id, legacy.notification_type, legacy.title, legacy.message, legacy.link_url, legacy.is_read, legacy.read_at, legacy.created_at "
+                            + "FROM admin_notifications legacy "
+                            + "LEFT JOIN user_notifications current "
+                            + "ON current.user_id = legacy.admin_user_id "
+                            + "AND current.notification_type = legacy.notification_type "
+                            + "AND current.title = legacy.title "
+                            + "AND current.message = legacy.message "
+                            + "AND current.created_at = legacy.created_at "
+                            + "WHERE current.id IS NULL"
+            );
+            statement.executeUpdate("DROP TABLE admin_notifications");
+            logger.info("Migrated admin_notifications into user_notifications for both admin and student in-app alerts.");
+        }
     }
 
     private void ensureReservationStatusEnumValues(Statement statement) throws Exception {
-        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'reservations'")) {
-            if (!tables.next()) {
-                return;
-            }
+        if (!tableExists(statement, "reservations")) {
+            return;
         }
 
-        // Check if PENDING_APPROVAL is already in the enum
         try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM reservations LIKE 'status'")) {
             if (columns.next()) {
                 String columnType = columns.getString("Type");
                 if (columnType != null && columnType.contains("PENDING_APPROVAL")) {
-                    return; // Already migrated
+                    return;
                 }
             }
         }
@@ -244,7 +234,7 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
                 "CREATE TABLE IF NOT EXISTS registration_otp_tokens ("
                         + "id BIGINT PRIMARY KEY AUTO_INCREMENT, "
                         + "user_id BIGINT NOT NULL, "
-                        + "token VARCHAR(120) NOT NULL UNIQUE, "
+                        + "token VARCHAR(64) NOT NULL UNIQUE, "
                         + "expires_at DATETIME NOT NULL, "
                         + "used BOOLEAN NOT NULL DEFAULT FALSE, "
                         + "created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, "
@@ -273,10 +263,8 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
     }
 
     private void ensureEmailNotificationTypeEnumValues(Statement statement) throws Exception {
-        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'email_notifications'")) {
-            if (!tables.next()) {
-                return;
-            }
+        if (!tableExists(statement, "email_notifications")) {
+            return;
         }
 
         try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM email_notifications LIKE 'notification_type'")) {
@@ -297,6 +285,10 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
     }
 
     private void ensureUserStatusPendingValue(Statement statement) throws Exception {
+        if (!tableExists(statement, "users")) {
+            return;
+        }
+
         try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM users LIKE 'status'")) {
             if (columns.next()) {
                 String columnType = columns.getString("Type");
@@ -312,42 +304,136 @@ public class DatabaseSchemaInitializer implements ApplicationRunner {
     }
 
     private void ensureMustChangePasswordColumn(Statement statement) throws Exception {
-        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM users LIKE 'must_change_password'")) {
-            if (columns.next()) {
-                return;
-            }
+        if (!tableExists(statement, "users")) {
+            return;
+        }
+
+        if (hasColumn(statement, "users", "must_change_password")) {
+            return;
         }
         statement.executeUpdate("ALTER TABLE users ADD COLUMN must_change_password BOOLEAN NOT NULL DEFAULT FALSE AFTER status");
         logger.info("Added users.must_change_password column for first-login password updates.");
     }
 
     private void ensureBookArchiveColumns(Statement statement) throws Exception {
-        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE 'books'")) {
-            if (!tables.next()) {
-                return;
-            }
+        if (!tableExists(statement, "books")) {
+            return;
         }
 
-        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM books LIKE 'is_visible_in_catalog'")) {
-            if (!columns.next()) {
-                statement.executeUpdate("ALTER TABLE books ADD COLUMN is_visible_in_catalog BOOLEAN NOT NULL DEFAULT TRUE AFTER is_digital");
-                logger.info("Added books.is_visible_in_catalog column for student catalog visibility.");
-            }
+        if (!hasColumn(statement, "books", "is_visible_in_catalog")) {
+            statement.executeUpdate("ALTER TABLE books ADD COLUMN is_visible_in_catalog BOOLEAN NOT NULL DEFAULT TRUE AFTER is_digital");
+            logger.info("Added books.is_visible_in_catalog column for student catalog visibility.");
         }
 
-        try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM books LIKE 'is_archived'")) {
-            if (!columns.next()) {
-                statement.executeUpdate("ALTER TABLE books ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE AFTER is_visible_in_catalog");
-                logger.info("Added books.is_archived column for soft-delete recovery.");
-            }
+        if (!hasColumn(statement, "books", "is_archived")) {
+            statement.executeUpdate("ALTER TABLE books ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT FALSE AFTER is_visible_in_catalog");
+            logger.info("Added books.is_archived column for soft-delete recovery.");
         }
 
         statement.executeUpdate("UPDATE books SET is_visible_in_catalog = FALSE WHERE is_archived = TRUE");
+    }
+
+    private void ensureProtectedForeignKeys(Statement statement) throws Exception {
+        if (tableExists(statement, "students")) {
+            dropForeignKeyIfExists(statement, "students", "fk_students_user");
+            statement.executeUpdate(
+                    "ALTER TABLE students "
+                            + "ADD CONSTRAINT fk_students_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
+            );
+        }
+
+        if (tableExists(statement, "admins")) {
+            dropForeignKeyIfExists(statement, "admins", "fk_admins_user");
+            statement.executeUpdate(
+                    "ALTER TABLE admins "
+                            + "ADD CONSTRAINT fk_admins_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE RESTRICT"
+            );
+        }
+
+        if (tableExists(statement, "issue_records")) {
+            dropForeignKeyIfExists(statement, "issue_records", "fk_issue_admin");
+            statement.executeUpdate(
+                    "ALTER TABLE issue_records "
+                            + "ADD CONSTRAINT fk_issue_admin FOREIGN KEY (issued_by) REFERENCES users(id) ON DELETE RESTRICT"
+            );
+        }
+    }
+
+    private void tightenColumnSizes(Statement statement) throws Exception {
+        if (tableExists(statement, "users")) {
+            statement.executeUpdate("ALTER TABLE users MODIFY COLUMN email VARCHAR(100) NOT NULL");
+        }
+
+        if (tableExists(statement, "students")) {
+            statement.executeUpdate(
+                    "ALTER TABLE students "
+                            + "MODIFY COLUMN course VARCHAR(100) NOT NULL DEFAULT 'Not set', "
+                            + "MODIFY COLUMN address VARCHAR(200) NULL, "
+                            + "MODIFY COLUMN qr_code_path VARCHAR(200) NULL"
+            );
+        }
+
+        if (tableExists(statement, "books")) {
+            statement.executeUpdate(
+                    "ALTER TABLE books "
+                            + "MODIFY COLUMN cover_image VARCHAR(200) NULL, "
+                            + "MODIFY COLUMN ebook_path VARCHAR(200) NULL, "
+                            + "MODIFY COLUMN qr_code_path VARCHAR(200) NULL"
+            );
+        }
+
+        if (tableExists(statement, "issue_records")) {
+            statement.executeUpdate("ALTER TABLE issue_records MODIFY COLUMN remarks VARCHAR(180) NULL");
+        }
+
+        if (tableExists(statement, "password_reset_tokens")) {
+            statement.executeUpdate("ALTER TABLE password_reset_tokens MODIFY COLUMN token VARCHAR(64) NOT NULL");
+        }
+
+        if (tableExists(statement, "registration_otp_tokens")) {
+            statement.executeUpdate("ALTER TABLE registration_otp_tokens MODIFY COLUMN token VARCHAR(64) NOT NULL");
+        }
+
+        if (tableExists(statement, "student_profile_otp_requests")) {
+            statement.executeUpdate(
+                    "ALTER TABLE student_profile_otp_requests "
+                            + "MODIFY COLUMN pending_course VARCHAR(100) NULL, "
+                            + "MODIFY COLUMN pending_address VARCHAR(200) NULL, "
+                            + "MODIFY COLUMN otp_hash VARCHAR(64) NOT NULL, "
+                            + "MODIFY COLUMN destination_email VARCHAR(100) NOT NULL"
+            );
+        }
+
+        if (tableExists(statement, "user_notifications")) {
+            statement.executeUpdate("ALTER TABLE user_notifications MODIFY COLUMN link_url VARCHAR(200) NULL");
+        }
+    }
+
+    private boolean tableExists(Statement statement, String tableName) throws Exception {
+        try (ResultSet tables = statement.executeQuery("SHOW TABLES LIKE '" + tableName + "'")) {
+            return tables.next();
+        }
     }
 
     private boolean hasColumn(Statement statement, String tableName, String columnName) throws Exception {
         try (ResultSet columns = statement.executeQuery("SHOW COLUMNS FROM " + tableName + " LIKE '" + columnName + "'")) {
             return columns.next();
         }
+    }
+
+    private void dropForeignKeyIfExists(Statement statement, String tableName, String constraintName) throws Exception {
+        try (ResultSet constraints = statement.executeQuery(
+                "SELECT 1 FROM information_schema.table_constraints "
+                        + "WHERE table_schema = DATABASE() "
+                        + "AND table_name = '" + tableName + "' "
+                        + "AND constraint_name = '" + constraintName + "' "
+                        + "AND constraint_type = 'FOREIGN KEY'"
+        )) {
+            if (!constraints.next()) {
+                return;
+            }
+        }
+
+        statement.executeUpdate("ALTER TABLE " + tableName + " DROP FOREIGN KEY " + constraintName);
     }
 }

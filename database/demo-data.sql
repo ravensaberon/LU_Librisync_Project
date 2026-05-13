@@ -1,31 +1,41 @@
 USE lu_librisync;
 
-INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, student_id, status)
-SELECT 'LU', NULL, 'Admin', NULL, 'admin@lulibrisync.edu', 'Admin1234', 'ADMIN', NULL, 'ACTIVE'
+INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, status)
+SELECT 'LU', NULL, 'Admin', NULL, 'admin@lulibrisync.edu', 'Admin1234', 'ADMIN', 'ACTIVE'
 WHERE NOT EXISTS (
     SELECT 1
     FROM users
     WHERE email = 'admin@lulibrisync.edu'
 );
 
-INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, student_id, status)
-SELECT 'Maria', NULL, 'Santos', NULL, 'maria.santos@student.edu', 'Student1234', 'STUDENT', '241-0001', 'ACTIVE'
+INSERT INTO admins (user_id)
+SELECT u.id
+FROM users u
+WHERE u.email = 'admin@lulibrisync.edu'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM admins a
+      WHERE a.user_id = u.id
+  );
+
+INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, status)
+SELECT 'Maria', NULL, 'Santos', NULL, 'maria.santos@student.edu', 'Student1234', 'STUDENT', 'ACTIVE'
 WHERE NOT EXISTS (
     SELECT 1
     FROM users
     WHERE email = 'maria.santos@student.edu'
 );
 
-INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, student_id, status)
-SELECT 'John', NULL, 'Cruz', NULL, 'john.cruz@student.edu', 'Student1234', 'STUDENT', '231-0002', 'ACTIVE'
+INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, status)
+SELECT 'John', NULL, 'Cruz', NULL, 'john.cruz@student.edu', 'Student1234', 'STUDENT', 'ACTIVE'
 WHERE NOT EXISTS (
     SELECT 1
     FROM users
     WHERE email = 'john.cruz@student.edu'
 );
 
-INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, student_id, status)
-SELECT 'Angela', NULL, 'Reyes', NULL, 'angela.reyes@student.edu', 'Student1234', 'STUDENT', '221-0018', 'ACTIVE'
+INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, status)
+SELECT 'Angela', NULL, 'Reyes', NULL, 'angela.reyes@student.edu', 'Student1234', 'STUDENT', 'ACTIVE'
 WHERE NOT EXISTS (
     SELECT 1
     FROM users

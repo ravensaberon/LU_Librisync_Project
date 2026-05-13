@@ -1,8 +1,10 @@
 package com.lulibrisync.service;
 
 import com.lulibrisync.config.LegacyAwarePasswordEncoder;
+import com.lulibrisync.model.Admin;
 import com.lulibrisync.model.Role;
 import com.lulibrisync.model.User;
+import com.lulibrisync.repository.AdminRepository;
 import com.lulibrisync.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,22 +15,26 @@ public class AdminService {
     private static final java.util.regex.Pattern PASSWORD_PATTERN = java.util.regex.Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s]).{12,100}$");
 
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
     private final LegacyAwarePasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
 
     public AdminService(UserRepository userRepository,
+                        AdminRepository adminRepository,
                         LegacyAwarePasswordEncoder passwordEncoder,
                         AuditLogService auditLogService) {
         this.userRepository = userRepository;
+        this.adminRepository = adminRepository;
         this.passwordEncoder = passwordEncoder;
         this.auditLogService = auditLogService;
     }
 
     public User getAdminByEmail(String email) {
-        User user = userRepository.findByEmailIgnoreCase(required(email, "Admin account not found."))
-                .orElseThrow(() -> new IllegalArgumentException("Admin account not found."));
+        Admin admin = adminRepository.findByUser_EmailIgnoreCase(required(email, "Admin account not found."))
+                .orElseThrow(() -> new IllegalArgumentException("Admin account profile not found."));
+        User user = admin.getUser();
 
-        if (!Role.ADMIN.equals(user.getRole())) {
+        if (user == null || !Role.ADMIN.equals(user.getRole())) {
             throw new IllegalArgumentException("Selected user is not an admin account.");
         }
 

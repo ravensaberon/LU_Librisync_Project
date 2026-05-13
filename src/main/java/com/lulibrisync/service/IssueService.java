@@ -419,6 +419,9 @@ public class IssueService {
         if (dueDate == null) {
             throw new IllegalArgumentException("Due date is required.");
         }
+        if (!issueRecord.isReturned()) {
+            validateActiveLoanDueDate(dueDate);
+        }
 
         issueRecord.setDueDate(dueDate.atTime(17, 0));
         issueRecord.setRemarks(blankToNull(remarks));
@@ -437,10 +440,20 @@ public class IssueService {
 
         IssueRecord savedIssueRecord = issueRecordRepository.save(issueRecord);
         if (!savedIssueRecord.isReturned()) {
+            emailNotificationService.cancelDueReminder(savedIssueRecord);
             emailNotificationService.queueDueReminder(savedIssueRecord);
         }
         fineService.syncFineForIssue(savedIssueRecord);
         return savedIssueRecord;
+    }
+
+    private void validateActiveLoanDueDate(LocalDate dueDate) {
+        if (dueDate.isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException("Due date cannot be earlier than today.");
+        }
+        if (dueDate.isAfter(LocalDate.now().plusDays(circulationPolicyService.getMaxLoanDays()))) {
+            throw new IllegalArgumentException("Due date exceeds the maximum loan period allowed by current circulation policy.");
+        }
     }
 
     @Transactional

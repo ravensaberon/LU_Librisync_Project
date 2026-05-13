@@ -326,7 +326,7 @@
                     </div>
                     <h2 class="auth-panel-title">Welcome, <span class="auth-panel-title-accent">${student.user.firstName}</span></h2>
                     <p class="password-setup-copy">
-                        Your account is ready. You can keep your generated password or set a new personal one below.
+                        Your account is ready. Check your email for the temporary password, then set a new personal password before using the system.
                     </p>
                 </div>
                 <div class="password-setup-badge" aria-hidden="true">
@@ -345,17 +345,11 @@
 
             <div class="temp-pw-box">
                 <div class="temp-pw-meta">
-                    <span><i class="bi bi-info-circle me-1"></i>Your generated password</span>
+                    <span><i class="bi bi-envelope-check me-1"></i>Temporary password sent by email</span>
                     <span>Student ID: ${student.studentId}</span>
                 </div>
-                <div class="temp-pw-value" id="tempPwDisplay">
-                    <c:choose>
-                        <c:when test="${not empty temporaryPassword}">${temporaryPassword}</c:when>
-                        <c:otherwise><span style="opacity:0.55;font-size:0.85rem;">Not available — check your registration email or contact the library.</span></c:otherwise>
-                    </c:choose>
-                </div>
-                <div class="small mt-3" style="color:#8a5d12;opacity:0.92;line-height:1.65;">
-                    This is your account password. You can keep it or set a new one below.
+                <div class="small mt-1" style="color:#8a5d12;opacity:0.92;line-height:1.65;">
+                    For security, the generated password is no longer shown on this page. Use the email copy for first sign-in only, then replace it here.
                 </div>
             </div>
 
@@ -407,7 +401,6 @@
                             <li id="req-lower"><i class="bi bi-x-circle-fill"></i> Lowercase letter</li>
                             <li id="req-number"><i class="bi bi-x-circle-fill"></i> Number</li>
                             <li id="req-special"><i class="bi bi-x-circle-fill"></i> Special character</li>
-                            <li id="req-nottemp"><i class="bi bi-x-circle-fill"></i> Different from generated password</li>
                         </ul>
                     </div>
 
@@ -419,19 +412,6 @@
                 </div>
             </form>
 
-            <%-- Keep generated password — separate form, outside the main form --%>
-            <div class="password-setup-later mt-3">
-                <div class="password-setup-later-copy">
-                    <strong>Keep generated password</strong>
-                    <span>Skip this step and use your generated password to sign in. You can change it anytime from your profile.</span>
-                </div>
-                <form method="post" action="${pageContext.request.contextPath}/student/password/change-temporary" class="m-0">
-                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                    <button class="password-setup-later-button" type="submit">
-                        <i class="bi bi-arrow-right me-2"></i>Continue to dashboard
-                    </button>
-                </form>
-            </div>
         </section>
     </div>
 </div>
@@ -463,8 +443,6 @@
         wireToggle("newPassword", "toggleNewPassword");
         wireToggle("confirmPassword", "toggleConfirmPassword");
 
-        var tempPwDisplay = document.getElementById("tempPwDisplay");
-        var tempPwRaw = tempPwDisplay ? (tempPwDisplay.textContent || "").trim() : "";
         var PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d\s]).{12,100}$/;
 
         function checkReq(id, met) {
@@ -516,14 +494,12 @@
 
         function validateNewPassword() {
             var pw = newPassword.value;
-            var notTemp = !tempPwRaw || pw !== tempPwRaw;
 
             checkReq("req-length", pw.length >= 12);
             checkReq("req-upper", /[A-Z]/.test(pw));
             checkReq("req-lower", /[a-z]/.test(pw));
             checkReq("req-number", /\d/.test(pw));
             checkReq("req-special", /[^A-Za-z\d\s]/.test(pw));
-            checkReq("req-nottemp", pw.length > 0 && notTemp);
             updateStrengthBar(pw);
 
             if (!pw) {
@@ -532,10 +508,6 @@
             }
             if (!PASSWORD_PATTERN.test(pw)) {
                 newPasswordError.textContent = "Password must be at least 12 characters with uppercase, lowercase, number, and special character.";
-                return false;
-            }
-            if (!notTemp) {
-                newPasswordError.textContent = "Choose a different password from the temporary one.";
                 return false;
             }
 
@@ -570,12 +542,6 @@
         confirmPassword.addEventListener("input", validateConfirmPassword);
 
         document.getElementById("forcePasswordForm").addEventListener("submit", function (e) {
-            var pw = newPassword.value;
-            var cpw = confirmPassword.value;
-            // If both are blank, allow the form to submit (skip = keep generated password)
-            if (!pw && !cpw) {
-                return;
-            }
             var ok = validateNewPassword() & validateConfirmPassword();
             if (!ok) {
                 e.preventDefault();

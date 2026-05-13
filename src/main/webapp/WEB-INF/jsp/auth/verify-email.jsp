@@ -75,13 +75,6 @@
                 <div class="alert alert-danger">${error}</div>
             </c:if>
 
-            <c:if test="${not empty temporaryPassword}">
-                <div class="alert alert-warning">
-                    <strong>Temporary password:</strong> <code>${temporaryPassword}</code><br>
-                    <span class="small">Student ID: ${registeredStudentId}. Keep this password for your first login. You will be asked to change it after signing in.</span>
-                </div>
-            </c:if>
-
             <%-- OTP status strip --%>
             <div class="otp-panel mb-4">
                 <div class="otp-panel-icon"><i class="bi bi-envelope-paper"></i></div>

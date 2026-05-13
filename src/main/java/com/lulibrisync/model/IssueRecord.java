@@ -61,7 +61,7 @@ public class IssueRecord {
     @Column(name = "fine_amount", nullable = false, precision = 10, scale = 2)
     private BigDecimal fineAmount = BigDecimal.ZERO;
 
-    @Column(length = 255)
+    @Column(length = 180)
     private String remarks;
 
     @Column(name = "created_at", nullable = false, updatable = false)
