@@ -10,10 +10,10 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.lulibrisync</groupId>
-    <artifactId>lu-librisync</artifactId>
+    <groupId>com.latteandletters</groupId>
+    <artifactId>latte-and-letters</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>LU Librisync</name>
+    <name>Latte and Letters</name>
     <description>Library Management System using Spring Boot, JSP, and MySQL</description>
     <packaging>war</packaging>
 

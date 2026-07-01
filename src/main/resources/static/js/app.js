@@ -111,7 +111,7 @@ function resolveConfirmationConfig(form) {
     return null;
 }
 
-window.LuLibrisyncAddress = (function () {
+window.LatteAndLettersAddress = (function () {
     function normalizeLookupValue(value) {
         return (value || "")
             .normalize("NFD")
@@ -260,7 +260,6 @@ window.LuLibrisyncAddress = (function () {
         ".shell-panel-title",
         ".auth-panel-title",
         ".catalog-title",
-        ".landing-title",
         ".profile-hero-title",
         ".dashboard-tab-button span",
         ".support-item strong",
@@ -602,7 +601,7 @@ window.LuLibrisyncAddress = (function () {
     var profileLink = navLinks ? navLinks.querySelector('a[href*="/profile"]') : null;
     var logoutForm = navLinks ? navLinks.querySelector('form[action*="/logout"]') : null;
     var mobileQuery = window.matchMedia("(max-width: 1100px)");
-    var collapseStorageKey = "lulibrisync.shell.nav.collapsed";
+    var collapseStorageKey = "latteandletters.shell.nav.collapsed";
 
     if (!navLinks || !profileLink || !logoutForm) {
         return;
@@ -743,7 +742,7 @@ window.LuLibrisyncAddress = (function () {
 
         return {
             kicker: kicker || (isStudent ? "Student Portal" : "Admin Console"),
-            title: "LU Librisync",
+            title: "Latte and Letters",
             accountLabel: isStudent ? "Student menu" : "Admin menu",
             accountSubtitle: "Profile, security, and session",
             accountInitial: isStudent ? "S" : "A",

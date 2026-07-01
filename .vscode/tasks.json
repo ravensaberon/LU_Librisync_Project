@@ -2,14 +2,14 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Run LU Librisync",
+      "label": "Run Latte and Letters",
       "type": "shell",
       "command": "powershell",
       "args": [
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        "${workspaceFolder}\\scripts\\run-lu-librisync.ps1"
+        "${workspaceFolder}\\scripts\\run-latte-and-letters.ps1"
       ],
       "options": {
         "cwd": "${workspaceFolder}"

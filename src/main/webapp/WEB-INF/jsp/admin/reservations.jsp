@@ -234,7 +234,7 @@
         const previewCode = document.getElementById("reservationPreviewCode");
         const previewConfirmBtn = document.getElementById("reservationPreviewConfirmBtn");
         const previewRescanBtn = document.getElementById("reservationPreviewRescanBtn");
-        const scanner = window.LuLibrisyncQr.createScanner({
+        const scanner = window.LatteAndLettersQr.createScanner({
             videoElement: document.getElementById("reservationScannerVideo"),
             statusElement: document.getElementById("reservationScannerStatus"),
             formats: ["qr_code"],
@@ -245,7 +245,7 @@
             fileSuccessMessage: "QR image decoded. Review the details below.",
             onDetected: showReservationScanPreview,
             onScanError: function () {
-                window.LuLibrisyncQr.setStatus(
+                window.LatteAndLettersQr.setStatus(
                     document.getElementById("reservationScannerStatus"),
                     "Camera access is active, but the current frame could not be decoded yet.",
                     true

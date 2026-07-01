@@ -81,7 +81,7 @@
     <div class="app-nav">
         <div>
             <span class="tag-chip">Admin Console</span>
-            <div class="brand-title mt-2">LU Librisync Dashboard</div>
+            <div class="brand-title mt-2">Latte and Letters Dashboard</div>
         </div>
         <div class="nav-links">
             <a class="nav-pill active" href="${pageContext.request.contextPath}/admin/dashboard">Dashboard</a>

@@ -1,5 +1,5 @@
-CREATE DATABASE IF NOT EXISTS lu_librisync;
-USE lu_librisync;
+CREATE DATABASE IF NOT EXISTS latte_and_letters;
+USE latte_and_letters;
 
 -- Shared authentication/accounts table.
 CREATE TABLE IF NOT EXISTS users (

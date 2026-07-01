@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>LU Librisync Registration</title>
+    <title>Latte and Letters Registration</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css?v=20260503-register-refresh">
@@ -290,9 +290,9 @@
     <section class="register-form-panel">
         <div class="register-form-card">
             <div class="auth-utility-bar mb-3">
-                <a class="auth-back-link" href="${pageContext.request.contextPath}/">
+                <a class="auth-back-link" href="${pageContext.request.contextPath}/login">
                     <i class="bi bi-arrow-left"></i>
-                    <span>Back to landing page</span>
+                    <span>Back to login</span>
                 </a>
             </div>
 
@@ -593,7 +593,7 @@
             return;
         }
 
-        var storageKey = "lulibrisync.registerDraft.v2";
+        var storageKey = "latteandletters.registerDraft.v2";
         var panels = Array.prototype.slice.call(document.querySelectorAll("[data-step-panel]"));
         var chips = Array.prototype.slice.call(document.querySelectorAll("[data-step-chip]"));
         var previousButton = document.getElementById("previousStepButton");

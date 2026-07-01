@@ -1,15 +1,15 @@
 INSERT INTO users (first_name, middle_name, last_name, suffix, email, password, role, status)
-SELECT 'LU', NULL, 'Admin', NULL, 'admin@lulibrisync.edu', 'Admin1234', 'ADMIN', 'ACTIVE'
+SELECT 'Latte', NULL, 'Admin', NULL, 'admin@latteandletters.edu', 'Admin1234', 'ADMIN', 'ACTIVE'
 WHERE NOT EXISTS (
     SELECT 1
     FROM users
-    WHERE email = 'admin@lulibrisync.edu'
+    WHERE email = 'admin@latteandletters.edu'
 );
 
 INSERT INTO admins (user_id)
 SELECT u.id
 FROM users u
-WHERE u.email = 'admin@lulibrisync.edu'
+WHERE u.email = 'admin@latteandletters.edu'
   AND NOT EXISTS (
       SELECT 1
       FROM admins a
@@ -401,7 +401,7 @@ SELECT
     'Active software engineering loan'
 FROM books b
 JOIN students s ON s.student_id = '241-0001'
-JOIN users a ON a.email = 'admin@lulibrisync.edu'
+JOIN users a ON a.email = 'admin@latteandletters.edu'
 WHERE b.isbn = '9780132350884'
   AND NOT EXISTS (
       SELECT 1
@@ -423,7 +423,7 @@ SELECT
     'Completed Filipino literature loan'
 FROM books b
 JOIN students s ON s.student_id = '231-0002'
-JOIN users a ON a.email = 'admin@lulibrisync.edu'
+JOIN users a ON a.email = 'admin@latteandletters.edu'
 WHERE b.isbn = '9789710813474'
   AND NOT EXISTS (
       SELECT 1
@@ -445,7 +445,7 @@ SELECT
     'Returned after literature class use'
 FROM books b
 JOIN students s ON s.student_id = '241-0001'
-JOIN users a ON a.email = 'admin@lulibrisync.edu'
+JOIN users a ON a.email = 'admin@latteandletters.edu'
 WHERE b.isbn = '9780062315007'
   AND NOT EXISTS (
       SELECT 1
@@ -467,7 +467,7 @@ SELECT
     'Leadership reading assignment'
 FROM books b
 JOIN students s ON s.student_id = '221-0018'
-JOIN users a ON a.email = 'admin@lulibrisync.edu'
+JOIN users a ON a.email = 'admin@latteandletters.edu'
 WHERE b.isbn = '9781591846444'
   AND NOT EXISTS (
       SELECT 1

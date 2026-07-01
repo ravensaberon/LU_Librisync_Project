@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Verify Email | LU Librisync</title>
+    <title>Verify Email | Latte and Letters</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css?v=20260430-auth-back-link">
@@ -20,7 +20,7 @@
                 One last step to activate your account.
             </h1>
             <p style="font-size:1.05rem;opacity:0.9;line-height:1.6;max-width:340px;">
-                We sent a 6-digit code to your email. Enter it on this page to verify your identity and activate your LU Librisync student account.
+                We sent a 6-digit code to your email. Enter it on this page to verify your identity and activate your Latte and Letters student account.
             </p>
             <div style="margin-top:32px;display:flex;flex-direction:column;gap:14px;">
                 <div style="display:flex;align-items:flex-start;gap:14px;">

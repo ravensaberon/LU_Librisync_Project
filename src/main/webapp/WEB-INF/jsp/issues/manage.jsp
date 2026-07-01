@@ -480,7 +480,7 @@
                                     <button class="btn btn-warm scanner-trigger" type="button" data-bs-toggle="modal" data-bs-target="#issueBookScannerModal">
                                         <i class="bi bi-upc-scan"></i>Scan book QR
                                     </button>
-                                    <span class="form-note">Use the camera to scan the LU Librisync QR label on the book and match it directly to this circulation form.</span>
+                                    <span class="form-note">Use the camera to scan the Latte and Letters QR label on the book and match it directly to this circulation form.</span>
                                 </div>
                             </div>
                             <div class="col-md-4">
@@ -519,7 +519,7 @@
                     <div>
                         <span class="modal-kicker">Circulation Scan</span>
                         <h2 class="h4 mb-1 mt-2">Match a book copy instantly</h2>
-                        <p class="modal-subtitle mb-0">Scan the LU Librisync QR label with your camera or upload a saved QR image from the phone gallery.</p>
+                        <p class="modal-subtitle mb-0">Scan the Latte and Letters QR label with your camera or upload a saved QR image from the phone gallery.</p>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -704,18 +704,18 @@
         const scannerModalElement = document.getElementById("issueBookScannerModal");
         const bookSelectElement = document.getElementById("bookId");
         const uploadInput = document.getElementById("issueScannerUpload");
-        const scanner = window.LuLibrisyncQr.createScanner({
+        const scanner = window.LatteAndLettersQr.createScanner({
             videoElement: document.getElementById("issueScannerVideo"),
             statusElement: document.getElementById("issueScannerStatus"),
             formats: ["qr_code"],
             liveMessage: "Scanner is live. Aim the camera at the book QR code and hold it inside the frame.",
-            qrFallbackMessage: "QR-only scanning is active on this browser. Aim the camera at a LU Librisync QR book label.",
+            qrFallbackMessage: "QR-only scanning is active on this browser. Aim the camera at a Latte and Letters QR book label.",
             unsupportedMessage: "This browser cannot decode live QR codes. You can still choose the book manually.",
             permissionMessage: "Camera access was blocked or unavailable. Please allow camera use, then try again.",
             fileSuccessMessage: "QR image decoded successfully. Matching the book now.",
             onDetected: selectBookFromCode,
             onScanError: function () {
-                window.LuLibrisyncQr.setStatus(
+                window.LatteAndLettersQr.setStatus(
                     document.getElementById("issueScannerStatus"),
                     "Camera access is active, but the current frame could not be decoded yet.",
                     true
@@ -783,13 +783,13 @@
             qrValueElement.textContent = issueCode;
             qrBookTitleElement.textContent = bookTitle;
             qrStudentNameElement.textContent = studentName;
-            currentIssueQrCanvas = window.LuLibrisyncQr.renderQr(qrCanvasElement, issueCode, {
+            currentIssueQrCanvas = window.LatteAndLettersQr.renderQr(qrCanvasElement, issueCode, {
                 size: 220,
                 emptyText: "No QR code available.",
                 errorText: "Unable to render this QR code."
             });
             downloadIssueQrButton.disabled = !currentIssueQrCanvas;
-            downloadIssueQrButton.dataset.filename = window.LuLibrisyncQr.normalizeFilename(issueCode, "issue-code") + ".png";
+            downloadIssueQrButton.dataset.filename = window.LatteAndLettersQr.normalizeFilename(issueCode, "issue-code") + ".png";
         });
 
         downloadIssueQrButton.addEventListener("click", function () {
@@ -797,7 +797,7 @@
                 return;
             }
 
-            window.LuLibrisyncQr.downloadCanvas(currentIssueQrCanvas, downloadIssueQrButton.dataset.filename);
+            window.LatteAndLettersQr.downloadCanvas(currentIssueQrCanvas, downloadIssueQrButton.dataset.filename);
         });
 
         // Borrow request QR scanner
@@ -811,7 +811,7 @@
         const borrowPreviewConfirmBtn = document.getElementById("borrowPreviewConfirmBtn");
         const borrowPreviewRescanBtn = document.getElementById("borrowPreviewRescanBtn");
 
-        const borrowScanner = window.LuLibrisyncQr.createScanner({
+        const borrowScanner = window.LatteAndLettersQr.createScanner({
             videoElement: document.getElementById("borrowScannerVideo"),
             statusElement: document.getElementById("borrowScannerStatus"),
             formats: ["qr_code"],
@@ -822,7 +822,7 @@
             fileSuccessMessage: "QR image decoded. Review the details below.",
             onDetected: showBorrowScanPreview,
             onScanError: function () {
-                window.LuLibrisyncQr.setStatus(
+                window.LatteAndLettersQr.setStatus(
                     document.getElementById("borrowScannerStatus"),
                     "Camera access is active, but the current frame could not be decoded yet.",
                     true

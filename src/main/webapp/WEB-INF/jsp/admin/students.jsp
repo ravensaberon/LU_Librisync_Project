@@ -245,12 +245,12 @@
         };
 
         function initAddressForms(root) {
-            if (!window.LuLibrisyncAddress) {
+            if (!window.LatteAndLettersAddress) {
                 return;
             }
 
             var scope = root || document;
-            window.LuLibrisyncAddress.initForm({
+            window.LatteAndLettersAddress.initForm({
                 cityMunicipality: scope.querySelector("#modalCityMunicipality"),
                 barangay: scope.querySelector("#modalBarangay"),
                 zipcode: scope.querySelector("#modalZipcode"),
