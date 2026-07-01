@@ -171,7 +171,7 @@
                 <span class="profile-section-icon"><i class="bi bi-person-badge"></i></span>
                 <div>
                     <div class="section-title mb-1">Personal details</div>
-                    <p class="muted-text mb-0">Your core student identity inside Latte and Letters.</p>
+                    <p class="muted-text mb-0">Your core student identity inside LU Librisync.</p>
                 </div>
             </div>
             <div class="profile-detail-grid">
@@ -595,8 +595,8 @@
             });
         }
 
-        if (window.LatteAndLettersAddress) {
-            window.LatteAndLettersAddress.initForm({
+        if (window.LuLibrisyncAddress) {
+            window.LuLibrisyncAddress.initForm({
                 cityMunicipality: profileCityMunicipality,
                 barangay: profileBarangay,
                 zipcode: profileZipcode,

@@ -359,11 +359,11 @@
 <script src="${pageContext.request.contextPath}/js/app.js"></script>
 <script>
     (function () {
-        if (!window.LatteAndLettersAddress) {
+        if (!window.LuLibrisyncAddress) {
             return;
         }
 
-        window.LatteAndLettersAddress.initForm({
+        window.LuLibrisyncAddress.initForm({
             cityMunicipality: document.getElementById("cityMunicipality"),
             barangay: document.getElementById("barangay"),
             zipcode: document.getElementById("zipcode"),

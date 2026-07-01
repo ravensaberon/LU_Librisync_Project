@@ -1,4 +1,4 @@
-# Latte and Letters Project Structure
+# LU Librisync Project Structure
 
 This guide maps the codebase by responsibility so the system is easier to present and review.
 
@@ -10,25 +10,27 @@ This guide maps the codebase by responsibility so the system is easier to presen
 
 ## Application Code
 
-- `src/main/java/com/latteandletters/LatteAndLettersApplication.java`
+- `src/main/java/com/lulibrisync/LuLibrisyncApplication.java`
   Main Spring Boot entry point.
-- `src/main/java/com/latteandletters/config`
+- `src/main/java/com/lulibrisync/config`
   Security, password encoding, database schema checks, demo-data initialization, and user-details loading.
-- `src/main/java/com/latteandletters/controller`
-  Web and API request handlers. These classes connect URLs to views, JSON endpoints, and service methods.
-- `src/main/java/com/latteandletters/service`
+- `src/main/java/com/lulibrisync/controller`
+  Web request handlers. These classes connect URLs to views and service methods.
+- `src/main/java/com/lulibrisync/service`
   Business logic for authentication, books, reservations, circulation, fines, reports, notifications, and student profiles.
-- `src/main/java/com/latteandletters/model`
+- `src/main/java/com/lulibrisync/model`
   JPA entities and enums that represent database records and controlled values.
-- `src/main/java/com/latteandletters/repository`
+- `src/main/java/com/lulibrisync/repository`
   Spring Data JPA interfaces for database access.
-- `src/main/java/com/latteandletters/dto`
-  Data-transfer objects used for forms, OTP states, dashboards, integration APIs, and service responses.
-- `src/main/java/com/latteandletters/util`
+- `src/main/java/com/lulibrisync/dto`
+  Data-transfer objects used for forms, OTP states, dashboards, and service responses.
+- `src/main/java/com/lulibrisync/util`
   Shared helper classes for pagination, display formatting, address forms, and year-level options.
 
 ## Web UI
 
+- `src/main/webapp/WEB-INF/jsp/index.jsp`
+  Public landing page.
 - `src/main/webapp/WEB-INF/jsp/auth`
   Login, registration, email verification, and forgot-password screens.
 - `src/main/webapp/WEB-INF/jsp/admin`

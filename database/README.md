@@ -3,7 +3,7 @@
 Use these files when setting up the MySQL database manually:
 
 1. `schema.sql`
-   Creates the `latte_and_letters` database, tables, foreign keys, and `vw_student_reading_history`.
+   Creates the `lu_librisync` database, tables, foreign keys, and `vw_student_reading_history`.
 2. `demo-data.sql`
    Inserts the sample admin account, student accounts, reference data, and presentation-ready demo records.
 

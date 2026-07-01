@@ -671,13 +671,13 @@
             qrTitleElement.textContent = bookTitle;
             qrIsbnElement.textContent = bookIsbn;
             qrTypeElement.textContent = bookCodeLabel;
-            currentQrCanvas = window.LatteAndLettersQr.renderQr(qrCanvasElement, bookCode, {
+            currentQrCanvas = window.LuLibrisyncQr.renderQr(qrCanvasElement, bookCode, {
                 size: 240,
                 emptyText: "No QR code available for this book.",
                 errorText: "Unable to render this QR code."
             });
             downloadButton.disabled = !currentQrCanvas;
-            downloadButton.dataset.filename = window.LatteAndLettersQr.normalizeFilename(bookTitle, "book") + "-qr.png";
+            downloadButton.dataset.filename = window.LuLibrisyncQr.normalizeFilename(bookTitle, "book") + "-qr.png";
         });
 
         downloadButton.addEventListener("click", function () {
@@ -685,7 +685,7 @@
                 return;
             }
 
-            window.LatteAndLettersQr.downloadCanvas(currentQrCanvas, downloadButton.dataset.filename);
+            window.LuLibrisyncQr.downloadCanvas(currentQrCanvas, downloadButton.dataset.filename);
         });
     })();
 </script>
@@ -695,7 +695,7 @@
         var barcodeInput = document.getElementById("barcode");
         var openScannerBtn = document.getElementById("openBarcodeScannerBtn");
 
-        var scanner = window.LatteAndLettersQr.createScanner({
+        var scanner = window.LuLibrisyncQr.createScanner({
             videoElement: document.getElementById("adminBarcodeVideo"),
             statusElement: document.getElementById("adminBarcodeStatus"),
             formats: ["code_128", "ean_13", "ean_8", "upc_a", "upc_e", "code_39", "codabar", "itf"],
@@ -757,7 +757,7 @@
                 return;
             }
             adminUploadStatus.textContent = "Reading barcode from image...";
-            window.LatteAndLettersQr.decodeBarcodeFromImageFile(file)
+            window.LuLibrisyncQr.decodeBarcodeFromImageFile(file)
                 .then(function (code) {
                     adminUploadStatus.textContent = "";
                     adminUploadInput.value = "";
@@ -799,7 +799,7 @@
             stickerTitle.textContent      = data.title;
             stickerIsbn.textContent       = data.isbn;
 
-            currentStickerCanvas = window.LatteAndLettersQr.renderQr(stickerQrCanvas, data.barcode, {
+            currentStickerCanvas = window.LuLibrisyncQr.renderQr(stickerQrCanvas, data.barcode, {
                 size: 240,
                 emptyText: "Unable to render QR.",
                 errorText: "Unable to render QR."
@@ -808,14 +808,14 @@
             downloadStickerBtn.disabled = !currentStickerCanvas;
             printStickerBtn.disabled    = !currentStickerCanvas;
             downloadStickerBtn.dataset.filename =
-                window.LatteAndLettersQr.normalizeFilename(data.title, "barcode-sticker") + ".png";
+                window.LuLibrisyncQr.normalizeFilename(data.title, "barcode-sticker") + ".png";
 
             bootstrap.Modal.getOrCreateInstance(stickerModal).show();
         }
 
         downloadStickerBtn.addEventListener("click", function () {
             if (currentStickerCanvas) {
-                window.LatteAndLettersQr.downloadCanvas(currentStickerCanvas, downloadStickerBtn.dataset.filename);
+                window.LuLibrisyncQr.downloadCanvas(currentStickerCanvas, downloadStickerBtn.dataset.filename);
             }
         });
 

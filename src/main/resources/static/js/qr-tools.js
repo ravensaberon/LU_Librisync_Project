@@ -1,4 +1,4 @@
-window.LatteAndLettersQr = (function () {
+window.LuLibrisyncQr = (function () {
     var DEFAULT_FORMATS = ["qr_code"];
 
     function setStatus(element, message, isWarning) {
@@ -428,7 +428,7 @@ window.LatteAndLettersQr = (function () {
                 } else {
                     setStatus(
                         statusElement,
-                        settings.qrFallbackMessage || "QR-only scanning is active. Aim the camera at a Latte and Letters QR label.",
+                        settings.qrFallbackMessage || "QR-only scanning is active. Aim the camera at a LU Librisync QR label.",
                         false
                     );
                 }

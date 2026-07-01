@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Forgot Password | Latte and Letters</title>
+    <title>Forgot Password | LU Librisync</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/app.css">
@@ -15,7 +15,7 @@
     <div class="auth-card hero-card">
         <section class="auth-story">
             <span class="tag-chip warn">Account Recovery</span>
-            <h1 class="mt-3 mb-3 fw-bold">Reset your Latte and Letters password</h1>
+            <h1 class="mt-3 mb-3 fw-bold">Reset your LU Librisync password</h1>
             <p class="fs-5 mb-0">Enter your registered email to continue.</p>
         </section>
 

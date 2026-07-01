@@ -85,7 +85,7 @@
             return;
         }
 
-        const storageKey = "latte-and-letters-reader-" + readerShell.dataset.bookId;
+        const storageKey = "lu-librisync-reader-" + readerShell.dataset.bookId;
         const pdfUrl = readerShell.dataset.pdfUrl;
         const canvas = document.getElementById("readerCanvas");
         const context = canvas.getContext("2d");

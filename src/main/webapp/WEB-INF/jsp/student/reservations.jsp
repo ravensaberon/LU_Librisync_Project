@@ -349,13 +349,13 @@
             qrBookTitleElement.textContent = bookTitle;
             qrTypeElement.textContent = reservationType;
             qrStatusElement.textContent = reservationStatus;
-            currentReservationQrCanvas = window.LatteAndLettersQr.renderQr(qrCanvasElement, reservationQr, {
+            currentReservationQrCanvas = window.LuLibrisyncQr.renderQr(qrCanvasElement, reservationQr, {
                 size: 240,
                 emptyText: "No reservation QR code is available.",
                 errorText: "Unable to render this reservation QR code."
             });
             downloadButton.disabled = !currentReservationQrCanvas;
-            downloadButton.dataset.filename = window.LatteAndLettersQr.normalizeFilename(bookTitle, "reservation") + "-pickup-qr.png";
+            downloadButton.dataset.filename = window.LuLibrisyncQr.normalizeFilename(bookTitle, "reservation") + "-pickup-qr.png";
         });
 
         downloadButton.addEventListener("click", function () {
@@ -363,7 +363,7 @@
                 return;
             }
 
-            window.LatteAndLettersQr.downloadCanvas(currentReservationQrCanvas, downloadButton.dataset.filename);
+            window.LuLibrisyncQr.downloadCanvas(currentReservationQrCanvas, downloadButton.dataset.filename);
         });
     });
 </script>

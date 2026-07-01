@@ -353,7 +353,7 @@
         const keywordInput = document.getElementById("keyword");
         const isbnInput = document.getElementById("isbn");
         const searchForm = document.getElementById("catalogSearchForm");
-        const scanner = window.LatteAndLettersQr.createScanner({
+        const scanner = window.LuLibrisyncQr.createScanner({
             videoElement: document.getElementById("catalogScannerVideo"),
             statusElement: document.getElementById("catalogScannerStatus"),
             formats: ["code_128", "ean_13", "ean_8", "upc_a", "upc_e", "code_39", "codabar", "itf"],
@@ -446,7 +446,7 @@
                 return;
             }
             uploadStatus.textContent = "Reading barcode from image...";
-            window.LatteAndLettersQr.decodeBarcodeFromImageFile(file)
+            window.LuLibrisyncQr.decodeBarcodeFromImageFile(file)
                 .then(function (code) {
                     uploadStatus.textContent = "";
                     uploadInput.value = "";

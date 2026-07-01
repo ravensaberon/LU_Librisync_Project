@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Colorful library shelves placeholder">
+  <defs>
+    <pattern id="books" x="0" y="0" width="240" height="230" patternUnits="userSpaceOnUse">
+      <rect width="240" height="230" fill="#06080e"/>
+      <rect x="0" y="44" width="14" height="186" fill="#36c6ff"/>
+      <rect x="14" y="58" width="12" height="172" fill="#3c2dc9"/>
+      <rect x="26" y="38" width="16" height="192" fill="#f6db74"/>
+      <rect x="42" y="52" width="11" height="178" fill="#ff5f6f"/>
+      <rect x="53" y="30" width="15" height="200" fill="#1dc58a"/>
+      <rect x="68" y="60" width="11" height="170" fill="#7b4dff"/>
+      <rect x="79" y="48" width="16" height="182" fill="#fff389"/>
+      <rect x="95" y="54" width="10" height="176" fill="#f57f3e"/>
+      <rect x="105" y="34" width="15" height="196" fill="#49b4ee"/>
+      <rect x="120" y="46" width="13" height="184" fill="#30d078"/>
+      <rect x="133" y="60" width="10" height="170" fill="#d966d6"/>
+      <rect x="143" y="42" width="14" height="188" fill="#4d43db"/>
+      <rect x="157" y="52" width="12" height="178" fill="#ffd56e"/>
+      <rect x="169" y="32" width="15" height="198" fill="#ff666d"/>
+      <rect x="184" y="58" width="10" height="172" fill="#9be89e"/>
+      <rect x="194" y="45" width="16" height="185" fill="#2ea8df"/>
+      <rect x="210" y="55" width="11" height="175" fill="#503de0"/>
+      <rect x="221" y="38" width="14" height="192" fill="#f2c85f"/>
+      <rect x="235" y="64" width="5" height="166" fill="#2bcf67"/>
+    </pattern>
+    <linearGradient id="shelfEdge" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffd8a1"/>
+      <stop offset="100%" stop-color="#ff5e96"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="#05070c"/>
+
+  <path d="M0 116 C450 30 1090 34 1600 108 L1600 258 C1090 186 450 194 0 282 Z" fill="url(#books)"/>
+  <path d="M0 294 C450 214 1090 220 1600 292 L1600 450 C1090 380 450 390 0 470 Z" fill="url(#books)"/>
+  <path d="M0 480 C450 410 1090 416 1600 486 L1600 646 C1090 576 450 586 0 664 Z" fill="url(#books)"/>
+  <path d="M0 676 C450 614 1090 620 1600 684 L1600 860 C1090 790 450 804 0 880 Z" fill="url(#books)"/>
+
+  <path d="M0 274 C450 186 1090 194 1600 266" fill="none" stroke="url(#shelfEdge)" stroke-width="18"/>
+  <path d="M0 462 C450 374 1090 382 1600 454" fill="none" stroke="url(#shelfEdge)" stroke-width="18"/>
+  <path d="M0 658 C450 570 1090 578 1600 650" fill="none" stroke="url(#shelfEdge)" stroke-width="18"/>
+  <path d="M0 874 C450 786 1090 794 1600 864" fill="none" stroke="url(#shelfEdge)" stroke-width="18"/>
+
+  <path d="M0 900 L0 790 C230 708 504 714 808 812 C1122 914 1344 918 1600 852 L1600 900 Z" fill="#312c8f"/>
+</svg>
